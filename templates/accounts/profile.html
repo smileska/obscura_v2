@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% load static %}
+
+{% block title %}Your Profile - Obscura Messenger{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="text-center">Profile Picture</h4>
+            </div>
+            <div class="card-body text-center">
+                <img src="{{ user.profile.image.url }}" alt="{{ user.username }}" class="profile-image">
+                
+                <div class="profile-status mb-3">
+                    <span class="status-indicator {% if user.profile.status == 'Online' %}status-online{% else %}status-offline{% endif %}"></span>
+                    <span>{{ user.profile.status }}</span>
+                </div>
+                
+                <form method="post" action="{% url 'accounts:update_profile_picture' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_profile_picture" class="form-label">Change Profile Picture</label>
+                        <input type="file" class="form-control" id="id_profile_picture" name="profile_picture" accept="image/*" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Account Information</h4>
+            </div>
+            <div class="card-body">
+                <p><strong>Username:</strong> {{ user.username }}</p>
+                <p><strong>Email:</strong> {{ user.email }}</p>
+                <p><strong>Member Since:</strong> {{ user.date_joined|date }}</p>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Change Username</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'accounts:update_username' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_new_username" class="form-label">New Username</label>
+                        <input type="text" class="form-control" id="id_new_username" name="new_username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_password_for_username" class="form-label">Confirm Password</label>
+                        <input type="password" class="form-control" id="id_password_for_username" name="password_for_username" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Change Username</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h4>Change Password</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'accounts:update_password' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_current_password" class="form-label">Current Password</label>
+                        <input type="password" class="form-control" id="id_current_password" name="current_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_new_password" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="id_new_password" name="new_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_confirm_new_password" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="id_confirm_new_password" name="confirm_new_password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Change Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

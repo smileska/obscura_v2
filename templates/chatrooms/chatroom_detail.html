@@ -1,0 +1,658 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ chatroom.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ chatroom.name }}</h3>
+                </div>
+                <div class="card-body">
+                    <div id="chatroom-messages" class="chat-box mb-3"></div>
+
+                    <form id="message-form" class="d-flex flex-column">
+                        <div class="d-flex mb-2">
+                            <input type="text" id="message-input" class="form-control me-2" placeholder="Type your message...">
+                            <button type="button" id="upload-btn" class="btn btn-outline-secondary me-2">
+                                <i class="fas fa-image"></i>
+                            </button>
+                            <button type="submit" class="btn btn-primary">Send</button>
+                        </div>
+
+                        <div id="image-preview" class="mt-2 d-none">
+                            <img id="preview-img" src="" alt="Preview" class="img-thumbnail mb-2" style="max-height: 200px;">
+                            <button type="button" id="remove-image-btn" class="btn btn-sm btn-danger">Remove</button>
+                        </div>
+
+                        <input type="file" id="image-input" accept="image/*" class="d-none">
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="card-title">Members</h5>
+                </div>
+                <div class="card-body">
+                    <ul id="chatroom-users" class="list-group list-group-flush"></ul>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="card-title">Actions</h5>
+                </div>
+                <div class="card-body">
+                    {% if is_admin %}
+                    <div class="mb-3">
+                        <h6>Add User</h6>
+                        <div class="input-group">
+                            <input type="text" id="user-search" class="form-control" placeholder="Username">
+                            <button id="add-user-btn" class="btn btn-outline-primary">Add</button>
+                        </div>
+                        <div id="search-results" class="mt-2"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6>Suggested Users</h6>
+                        <ul id="suggested-users" class="list-group list-group-flush"></ul>
+                    </div>
+                    {% else %}
+                    <div class="mb-3">
+                        <h6>Suggest User</h6>
+                        <div class="input-group">
+                            <input type="text" id="suggest-search" class="form-control" placeholder="Username">
+                            <button id="suggest-user-btn" class="btn btn-outline-primary">Suggest</button>
+                        </div>
+                        <div id="suggest-results" class="mt-2"></div>
+                    </div>
+                    {% endif %}
+
+                    <button id="leave-btn" class="btn btn-danger w-100">Leave Chatroom</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const currentUser = "{{ request.user.username }}";
+    const chatroomId = "{{ chatroom.id }}";
+    const isAdmin = {% if is_admin %}true{% else %}false{% endif %};
+    const csrfToken = "{{ csrf_token }}";
+
+    // WebSocket connection
+    let socket;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize WebSocket connection
+        socket = new WebSocket(`ws://${window.location.host}/ws/chat/`);
+        console.log("Attempting to connect to WebSocket...");
+
+        socket.onopen = function(e) {
+            console.log("WebSocket connection established successfully!");
+            // Authenticate with the server and join chatroom
+            socket.send(JSON.stringify({
+                'type': 'authentication',
+                'username': currentUser,
+                'chatroom_id': chatroomId
+            }));
+            console.log("Authentication message sent");
+
+            // Load messages and users
+            loadMessages();
+            loadUsers();
+
+            if (isAdmin) {
+                loadSuggestedUsers();
+            }
+        };
+
+        socket.onmessage = function(e) {
+            console.log("Message received from server:", e.data);
+            const data = JSON.parse(e.data);
+
+            if (data.type === 'message' && data.chatroom_id == chatroomId) {
+                addMessageToChat(data);
+            } else if (data.type === 'reaction' && data.chatroom_id == chatroomId) {
+                updateMessageReaction(data.message_id, data.reaction_type);
+            }
+        };
+
+        socket.onclose = function(e) {
+            console.log("WebSocket connection closed. Code:", e.code, "Reason:", e.reason);
+        };
+
+        socket.onerror = function(e) {
+            console.error("WebSocket error:", e);
+        };
+    });
+
+    // Load messages
+    function loadMessages() {
+        fetch(`/chatrooms/${chatroomId}/messages/`)
+            .then(response => response.json())
+            .then(messages => {
+                const chatMessages = document.getElementById('chatroom-messages');
+                chatMessages.innerHTML = '';
+
+                messages.forEach(message => {
+                    addMessageToChat(message);
+                });
+
+                // Scroll to bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            })
+            .catch(error => console.error('Error loading messages:', error));
+    }
+
+    // Load users
+    function loadUsers() {
+        fetch(`/chatrooms/${chatroomId}/users/`)
+            .then(response => response.json())
+            .then(users => {
+                const usersList = document.getElementById('chatroom-users');
+                usersList.innerHTML = '';
+
+                users.forEach(user => {
+                    const userItem = document.createElement('li');
+                    userItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+                    let userContent = `<span>${user.username}`;
+                    if (user.is_admin) {
+                        userContent += ' <span class="badge bg-primary">Admin</span>';
+                    }
+                    userContent += '</span>';
+
+                    userItem.innerHTML = userContent;
+
+                    if (isAdmin && user.username !== currentUser) {
+                        const actionButtons = document.createElement('div');
+                        actionButtons.className = 'btn-group btn-group-sm';
+
+                        if (!user.is_admin) {
+                            const makeAdminBtn = document.createElement('button');
+                            makeAdminBtn.className = 'btn btn-outline-primary';
+                            makeAdminBtn.textContent = 'Make Admin';
+                            makeAdminBtn.addEventListener('click', function() {
+                                makeUserAdmin(user.username);
+                            });
+                            actionButtons.appendChild(makeAdminBtn);
+                        }
+
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'btn btn-outline-danger';
+                        removeBtn.textContent = 'Remove';
+                        removeBtn.addEventListener('click', function() {
+                            removeUser(user.username);
+                        });
+                        actionButtons.appendChild(removeBtn);
+
+                        userItem.appendChild(actionButtons);
+                    }
+
+                    usersList.appendChild(userItem);
+                });
+            })
+            .catch(error => console.error('Error loading users:', error));
+    }
+
+    // Load suggested users
+    function loadSuggestedUsers() {
+        fetch(`/chatrooms/${chatroomId}/suggested-users/`)
+            .then(response => response.json())
+            .then(users => {
+                const suggestedUsersList = document.getElementById('suggested-users');
+                suggestedUsersList.innerHTML = '';
+
+                if (users.length === 0) {
+                    suggestedUsersList.innerHTML = '<li class="list-group-item">No suggested users</li>';
+                    return;
+                }
+
+                users.forEach(user => {
+                    const userItem = document.createElement('li');
+                    userItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    userItem.innerHTML = `
+                        <span>${user.username}</span>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-success approve-btn" data-user-id="${user.id}">Approve</button>
+                            <button class="btn btn-outline-danger delete-btn" data-user-id="${user.id}">Delete</button>
+                        </div>
+                    `;
+
+                    suggestedUsersList.appendChild(userItem);
+
+                    // Add event listeners
+                    const approveBtn = userItem.querySelector('.approve-btn');
+                    approveBtn.addEventListener('click', function() {
+                        approveSuggestion(user.id);
+                    });
+
+                    const deleteBtn = userItem.querySelector('.delete-btn');
+                    deleteBtn.addEventListener('click', function() {
+                        deleteSuggestion(user.id);
+                    });
+                });
+            })
+            .catch(error => console.error('Error loading suggested users:', error));
+    }
+
+    function addMessageToChat(message) {
+        const chatMessages = document.getElementById('chatroom-messages');
+        const messageDiv = document.createElement('div');
+
+        const isSentByMe = message.sender === currentUser || message.username === currentUser;
+        const senderName = message.sender || message.username;
+
+        messageDiv.className = `message ${isSentByMe ? 'message-sent' : 'message-received'} mb-3`;
+        messageDiv.dataset.messageId = message.id;
+
+        let messageContent = `
+            <div class="message-bubble">
+                ${!isSentByMe ? `<div class="message-sender">${senderName}</div>` : ''}
+                <div class="message-content">${message.message || message.content || ''}</div>
+                ${message.image_url ? `<img src="${message.image_url}" class="message-image mt-2" alt="Image">` : ''}
+                <div class="message-time">${formatTime(message.timestamp || message.sent_at)}</div>
+            </div>
+            <div class="reaction-container">
+                <button class="reaction-button" data-message-id="${message.id}">
+                    ${message.reaction_type ? getReactionEmoji(message.reaction_type) : '<i class="far fa-smile"></i>'}
+                </button>
+                <div class="reaction-popup hidden">
+                    <button data-reaction="1">👍</button>
+                    <button data-reaction="2">❤️</button>
+                    <button data-reaction="3">😂</button>
+                    <button data-reaction="4">😮</button>
+                    <button data-reaction="5">😢</button>
+                    <button data-reaction="6">🐴</button>
+                    <button data-reaction="7">🍮</button>
+                    <button data-reaction="8">🌹</button>
+                </div>
+            </div>
+        `;
+
+        messageDiv.innerHTML = messageContent;
+        chatMessages.appendChild(messageDiv);
+
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Send message
+    document.getElementById('message-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const messageInput = document.getElementById('message-input');
+        const message = messageInput.value.trim();
+
+        if (!message && !currentUploadedImageUrl) {
+            return;
+        }
+
+        const data = {
+            type: 'message',
+            chatroom_id: chatroomId,
+            sender: currentUser,
+            message: message,
+            image_url: currentUploadedImageUrl
+        };
+
+        socket.send(JSON.stringify(data));
+
+        // Clear inputs
+        messageInput.value = '';
+        clearImagePreview();
+
+        // Reset variables
+        currentUploadedImageUrl = null;
+    });
+
+    // Handle image upload
+    let currentUploadedImageUrl = null;
+
+    document.getElementById('upload-btn').addEventListener('click', function() {
+        document.getElementById('image-input').click();
+    });
+
+    document.getElementById('image-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview-img').src = e.target.result;
+            document.getElementById('image-preview').classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+
+        // Upload the image
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch('/chat/upload-image/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentUploadedImageUrl = data.image_url;
+            } else {
+                console.error('Error uploading image:', data.error);
+                clearImagePreview();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            clearImagePreview();
+        });
+    });
+
+    document.getElementById('remove-image-btn').addEventListener('click', clearImagePreview);
+
+    function clearImagePreview() {
+        document.getElementById('image-preview').classList.add('d-none');
+        document.getElementById('preview-img').src = '';
+        document.getElementById('image-input').value = '';
+        currentUploadedImageUrl = null;
+    }
+
+    // Send reaction
+    window.sendReaction = function(messageId, reactionType) {
+        const formData = new FormData();
+        formData.append('reaction_type', reactionType);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch(`/chatrooms/message/${messageId}/react/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateMessageReaction(messageId, reactionType);
+
+                // Send via WebSocket for real-time updates
+                socket.send(JSON.stringify({
+                    'type': 'reaction',
+                    'message_id': messageId,
+                    'reaction_type': reactionType,
+                    'chatroom_id': chatroomId
+                }));
+            }
+        })
+        .catch(error => console.error('Error sending reaction:', error));
+    };
+
+    // Admin functions
+    // Add user search
+    if (isAdmin) {
+        const userSearchInput = document.getElementById('user-search');
+        userSearchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            if (query.length < 2) {
+                document.getElementById('search-results').innerHTML = '';
+                return;
+            }
+
+            fetch(`/chat/search-users/?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const searchResults = document.getElementById('search-results');
+                    searchResults.innerHTML = '';
+
+                    if (data.users.length === 0) {
+                        searchResults.innerHTML = '<div class="alert alert-info">No users found</div>';
+                        return;
+                    }
+
+                    const resultsList = document.createElement('div');
+                    resultsList.className = 'list-group';
+
+                    data.users.forEach(user => {
+                        const userItem = document.createElement('button');
+                        userItem.className = 'list-group-item list-group-item-action';
+                        userItem.textContent = user.username;
+                        userItem.addEventListener('click', function() {
+                            userSearchInput.value = user.username;
+                            searchResults.innerHTML = '';
+                        });
+
+                        resultsList.appendChild(userItem);
+                    });
+
+                    searchResults.appendChild(resultsList);
+                })
+                .catch(error => console.error('Error searching users:', error));
+        });
+
+        document.getElementById('add-user-btn').addEventListener('click', function() {
+            const username = userSearchInput.value.trim();
+            if (!username) return;
+
+            addUserToChatroom(username);
+        });
+    } else {
+        // Non-admin: suggest user
+        const suggestSearchInput = document.getElementById('suggest-search');
+        suggestSearchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            if (query.length < 2) {
+                document.getElementById('suggest-results').innerHTML = '';
+                return;
+            }
+
+            fetch(`/chat/search-users/?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const suggestResults = document.getElementById('suggest-results');
+                    suggestResults.innerHTML = '';
+
+                    if (data.users.length === 0) {
+                        suggestResults.innerHTML = '<div class="alert alert-info">No users found</div>';
+                        return;
+                    }
+
+                    const resultsList = document.createElement('div');
+                    resultsList.className = 'list-group';
+
+                    data.users.forEach(user => {
+                        const userItem = document.createElement('button');
+                        userItem.className = 'list-group-item list-group-item-action';
+                        userItem.textContent = user.username;
+                        userItem.addEventListener('click', function() {
+                            suggestSearchInput.value = user.username;
+                            suggestResults.innerHTML = '';
+                        });
+
+                        resultsList.appendChild(userItem);
+                    });
+
+                    suggestResults.appendChild(resultsList);
+                })
+                .catch(error => console.error('Error searching users:', error));
+        });
+
+        document.getElementById('suggest-user-btn').addEventListener('click', function() {
+            const username = suggestSearchInput.value.trim();
+            if (!username) return;
+
+            suggestUser(username);
+        });
+    }
+
+    // Leave chatroom
+    document.getElementById('leave-btn').addEventListener('click', function() {
+        if (confirm('Are you sure you want to leave this chatroom?')) {
+            leaveChatroom();
+        }
+    });
+
+    // Helper functions
+    function addUserToChatroom(username) {
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch(`/chatrooms/${chatroomId}/add-user/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                document.getElementById('user-search').value = '';
+                loadUsers();
+            } else {
+                alert(data.error || 'An error occurred');
+            }
+        })
+        .catch(error => console.error('Error adding user:', error));
+    }
+
+    function suggestUser(username) {
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch(`/chatrooms/${chatroomId}/suggest-user/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                document.getElementById('suggest-search').value = '';
+            } else {
+                alert(data.error || 'An error occurred');
+            }
+        })
+        .catch(error => console.error('Error suggesting user:', error));
+    }
+
+    function makeUserAdmin(username) {
+        if (!confirm(`Are you sure you want to make ${username} an admin?`)) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch(`/chatrooms/${chatroomId}/grant-admin/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                loadUsers();
+            } else {
+                alert(data.error || 'An error occurred');
+            }
+        })
+        .catch(error => console.error('Error making user admin:', error));
+    }
+
+    function removeUser(username) {
+        if (!confirm(`Are you sure you want to remove ${username} from the chatroom?`)) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch(`/chatrooms/${chatroomId}/remove-user/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                loadUsers();
+            } else {
+                alert(data.error || 'An error occurred');
+            }
+        })
+        .catch(error => console.error('Error removing user:', error));
+    }
+
+    function approveSuggestion(userId) {
+        const formData = new FormData();
+        formData.append('user_id', userId);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch(`/chatrooms/${chatroomId}/approve-suggestion/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                loadSuggestedUsers();
+                loadUsers();
+            } else {
+                alert(data.error || 'An error occurred');
+            }
+        })
+        .catch(error => console.error('Error approving suggestion:', error));
+    }
+
+    function deleteSuggestion(userId) {
+        const formData = new FormData();
+        formData.append('user_id', userId);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch(`/chatrooms/${chatroomId}/delete-suggestion/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                loadSuggestedUsers();
+            } else {
+                alert(data.error || 'An error occurred');
+            }
+        })
+        .catch(error => console.error('Error deleting suggestion:', error));
+    }
+
+    function leaveChatroom() {
+        fetch(`/chatrooms/${chatroomId}/leave/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '/chatrooms/';
+            } else {
+                alert(data.error || 'An error occurred');
+            }
+        })
+        .catch(error => console.error('Error leaving chatroom:', error));
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Chat with {{ chat_partner.username }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <img src="{{ chat_partner.profile.image.url }}" alt="{{ chat_partner.username }}" class="rounded-circle" width="40" height="40">
+                        <span class="ms-2 fw-bold">{{ chat_partner.username }}</span>
+                        <span class="ms-2 badge {% if chat_partner.profile.status == 'Online' %}bg-success{% else %}bg-secondary{% endif %}">
+                            {{ chat_partner.profile.status }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div id="chat-messages" class="chat-box mb-3"></div>
+
+                    <form id="message-form" class="d-flex flex-column">
+                        <div class="d-flex mb-2">
+                            <input type="text" id="message-input" class="form-control me-2" placeholder="Type your message...">
+                            <button type="button" id="upload-btn" class="btn btn-outline-secondary me-2">
+                                <i class="fas fa-image"></i>
+                            </button>
+                            <button type="submit" class="btn btn-primary">Send</button>
+                        </div>
+
+                        <div id="image-preview" class="mt-2 d-none">
+                            <img id="preview-img" src="" alt="Preview" class="img-thumbnail mb-2" style="max-height: 200px;">
+                            <button type="button" id="remove-image-btn" class="btn btn-sm btn-danger">Remove</button>
+                        </div>
+
+                        <input type="file" id="image-input" accept="image/*" class="d-none">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const currentUser = "{{ request.user.username }}";
+    const chatPartner = "{{ chat_partner.username }}";
+    const csrfToken = "{{ csrf_token }}";
+
+    // WebSocket connection
+    const socket = new WebSocket(`ws://${window.location.host}/ws/chat/`);
+
+    socket.onopen = function(e) {
+        console.log("WebSocket connection established");
+        // Authenticate with the server
+        socket.send(JSON.stringify({
+            'type': 'authentication',
+            'username': currentUser
+        }));
+
+        // Load messages
+        loadMessages();
+    };
+
+    socket.onmessage = function(e) {
+        console.log("WebSocket message received");
+        const data = JSON.parse(e.data);
+
+        if (data.type === 'message') {
+            // Only handle messages related to this chat
+            if ((data.sender === currentUser && data.recipient === chatPartner) ||
+                (data.sender === chatPartner && data.recipient === currentUser)) {
+                addMessageToChat(data);
+            }
+        } else if (data.type === 'reaction') {
+            updateMessageReaction(data.message_id, data.reaction_type);
+        }
+    };
+
+    socket.onclose = function(e) {
+        console.log("WebSocket connection closed");
+    };
+
+    // Load messages
+    function loadMessages() {
+        fetch(`/chat/${chatPartner}/messages/`)
+            .then(response => response.json())
+            .then(messages => {
+                const chatMessages = document.getElementById('chat-messages');
+                chatMessages.innerHTML = '';
+
+                messages.forEach(message => {
+                    addMessageToChat(message);
+                });
+
+                // Scroll to bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            })
+            .catch(error => console.error('Error loading messages:', error));
+    }
+
+    // Add message to chat
+    function addMessageToChat(message) {
+        console.log("Adding message to chat:", message);
+        const chatMessages = document.getElementById('chat-messages');
+        const messageDiv = document.createElement('div');
+
+        const isSentByMe = message.sender === currentUser;
+
+        messageDiv.className = `message ${isSentByMe ? 'message-sent' : 'message-received'} mb-3`;
+        messageDiv.dataset.messageId = message.id;
+
+        let messageContent = `
+            <div class="message-bubble">
+                <div class="message-content">${message.message || ''}</div>
+                ${message.image_url ? `<img src="${message.image_url}" class="message-image mt-2" alt="Image">` : ''}
+                <div class="message-time">${formatTime(message.timestamp)}</div>
+            </div>
+            <div class="reaction-container">
+                <button class="reaction-button" data-message-id="${message.id}">
+                    ${message.reaction_type ? getReactionEmoji(message.reaction_type) : '<i class="far fa-smile"></i>'}
+                </button>
+                <div class="reaction-popup hidden">
+                    <button data-reaction="1">👍</button>
+                    <button data-reaction="2">❤️</button>
+                    <button data-reaction="3">😂</button>
+                    <button data-reaction="4">😮</button>
+                    <button data-reaction="5">😢</button>
+                </div>
+            </div>
+        `;
+
+        messageDiv.innerHTML = messageContent;
+        chatMessages.appendChild(messageDiv);
+
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Send message
+    document.getElementById('message-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const messageInput = document.getElementById('message-input');
+        const message = messageInput.value.trim();
+
+        if (!message && !currentUploadedImageUrl) {
+            return;
+        }
+
+        const data = {
+            type: 'message',
+            sender: currentUser,
+            recipient: chatPartner,
+            message: message,
+            image_url: currentUploadedImageUrl
+        };
+
+        socket.send(JSON.stringify(data));
+
+        // Clear inputs
+        messageInput.value = '';
+        clearImagePreview();
+
+        // Reset variables
+        currentUploadedImageUrl = null;
+    });
+
+    // Handle image upload
+    let currentUploadedImageUrl = null;
+
+    document.getElementById('upload-btn').addEventListener('click', function() {
+        document.getElementById('image-input').click();
+    });
+
+    document.getElementById('image-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview-img').src = e.target.result;
+            document.getElementById('image-preview').classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+
+        // Upload the image
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch('/chat/upload-image/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentUploadedImageUrl = data.image_url;
+            } else {
+                console.error('Error uploading image:', data.error);
+                clearImagePreview();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            clearImagePreview();
+        });
+    });
+
+    document.getElementById('remove-image-btn').addEventListener('click', clearImagePreview);
+
+    function clearImagePreview() {
+        document.getElementById('image-preview').classList.add('d-none');
+        document.getElementById('preview-img').src = '';
+        document.getElementById('image-input').value = '';
+        currentUploadedImageUrl = null;
+    }
+
+    // Send reaction - making this globally available
+    window.sendReaction = function(messageId, reactionType) {
+        console.log(`Sending reaction: message=${messageId}, reaction=${reactionType}`);
+
+        const formData = new FormData();
+        formData.append('reaction_type', reactionType);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch(`/chat/message/${messageId}/react/`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log("Reaction sent successfully");
+                updateMessageReaction(messageId, reactionType);
+
+                // Send via WebSocket for real-time updates
+                socket.send(JSON.stringify({
+                    'type': 'reaction',
+                    'message_id': messageId,
+                    'reaction_type': reactionType
+                }));
+            } else {
+                console.error("Error sending reaction:", data.error || "Unknown error");
+            }
+        })
+        .catch(error => console.error('Error sending reaction:', error));
+    };
+</script>
+{% endblock %}
