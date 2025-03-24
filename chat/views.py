@@ -99,6 +99,7 @@ def upload_image(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
 @login_required
 def search_users(request):
     query = request.GET.get('q', '')
@@ -109,10 +110,15 @@ def search_users(request):
 
     users_data = []
     for user in users:
+        try:
+            image_url = user.profile.image.url if user.profile.image else None
+        except (AttributeError, ValueError):
+            image_url = None
+
         users_data.append({
             'id': user.id,
             'username': user.username,
-            'image': user.profile.image.url if hasattr(user, 'profile') and user.profile.image else None
+            'image': image_url
         })
 
     return JsonResponse({'users': users_data})

@@ -102,43 +102,58 @@
             .catch(error => console.error('Error loading messages:', error));
     }
 
-    // Add message to chat
-    function addMessageToChat(message) {
-        console.log("Adding message to chat:", message);
-        const chatMessages = document.getElementById('chat-messages');
-        const messageDiv = document.createElement('div');
+    // Replace the addMessageToChat function in chat.html
 
-        const isSentByMe = message.sender === currentUser;
+function addMessageToChat(message) {
+    console.log("Adding message to chat:", message);
+    const chatMessages = document.getElementById('chat-messages');
 
-        messageDiv.className = `message ${isSentByMe ? 'message-sent' : 'message-received'} mb-3`;
-        messageDiv.dataset.messageId = message.id;
-
-        let messageContent = `
-            <div class="message-bubble">
-                <div class="message-content">${message.message || ''}</div>
-                ${message.image_url ? `<img src="${message.image_url}" class="message-image mt-2" alt="Image">` : ''}
-                <div class="message-time">${formatTime(message.timestamp)}</div>
-            </div>
-            <div class="reaction-container">
-                <button class="reaction-button" data-message-id="${message.id}">
-                    ${message.reaction_type ? getReactionEmoji(message.reaction_type) : '<i class="far fa-smile"></i>'}
-                </button>
-                <div class="reaction-popup hidden">
-                    <button data-reaction="1">👍</button>
-                    <button data-reaction="2">❤️</button>
-                    <button data-reaction="3">😂</button>
-                    <button data-reaction="4">😮</button>
-                    <button data-reaction="5">😢</button>
-                </div>
-            </div>
-        `;
-
-        messageDiv.innerHTML = messageContent;
-        chatMessages.appendChild(messageDiv);
-
-        // Scroll to bottom
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+    // Check if message with this ID already exists (avoid duplicates)
+    if (document.querySelector(`.message[data-message-id="${message.id}"]`)) {
+        console.log("Message already exists in chat, skipping");
+        return;
     }
+
+    const messageDiv = document.createElement('div');
+
+    const isSentByMe = message.sender === currentUser;
+
+    messageDiv.className = `message ${isSentByMe ? 'message-sent' : 'message-received'} mb-3`;
+    messageDiv.dataset.messageId = message.id;
+
+    // Handle both formats of message (content field might be called 'message' or 'content')
+    const messageContent = message.message || message.content || '';
+    const imageUrl = message.image_url || null;
+    const timestamp = message.timestamp || new Date().toISOString();
+
+    let messageHtml = `
+        <div class="message-bubble">
+            <div class="message-content">${messageContent || ''}</div>
+            ${imageUrl ? `<img src="${imageUrl}" class="message-image mt-2" alt="Image">` : ''}
+            <div class="message-time">${formatTime(timestamp)}</div>
+        </div>
+        <div class="reaction-container">
+            <button class="reaction-button" data-message-id="${message.id}">
+                ${message.reaction_type ? getReactionEmoji(message.reaction_type) : '<i class="far fa-smile"></i>'}
+            </button>
+            <div class="reaction-popup hidden">
+                <button data-reaction="1">👍</button>
+                <button data-reaction="2">❤️</button>
+                <button data-reaction="3">😂</button>
+                <button data-reaction="4">😮</button>
+                <button data-reaction="5">😢</button>
+            </div>
+        </div>
+    `;
+
+    messageDiv.innerHTML = messageHtml;
+    chatMessages.appendChild(messageDiv);
+
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    console.log("Message added successfully");
+}
 
     // Send message
     document.getElementById('message-form').addEventListener('submit', function(e) {
