@@ -2,7 +2,7 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import User
-from .models import Message, MessageReaction
+from chat.models import Message, MessageReaction
 from chatrooms.models import Chatroom, ChatroomMessage, ChatroomMessageReaction
 
 
@@ -96,13 +96,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
             try:
                 recipient = User.objects.get(username=recipient_username)
 
-                # Handle image_url field properly
                 image_url = data.get('image_url')
                 image = None
 
                 if image_url and image_url.startswith('/media/'):
-                    # Strip '/media/' from the beginning to get the relative path
-                    image_path = image_url[7:]  # Remove '/media/'
+                    image_path = image_url[7:]
                     if image_path:
                         try:
                             from django.core.files.storage import default_storage
@@ -118,7 +116,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         except Exception as e:
                             print(f"Error setting image on message: {str(e)}")
 
-                # If no image or image processing failed, create message without image
                 message = Message.objects.create(
                     sender=self.user,
                     recipient=recipient,
@@ -167,6 +164,59 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Chatroom.DoesNotExist:
             return None
 
+    @database_sync_to_async
+    def get_private_reaction_data(self, data):
+        message_id = data.get('message_id')
+        reaction_type = data.get('reaction_type')
+
+        try:
+            message = Message.objects.get(id=message_id)
+            return {
+                'message': message,
+                'recipient_username': message.recipient.username if message.sender == self.user else message.sender.username
+            }
+        except Message.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def save_private_reaction(self, message_id, reaction_type):
+        try:
+            message = Message.objects.get(id=message_id)
+            reaction, created = MessageReaction.objects.update_or_create(
+                message=message,
+                user=self.user,
+                defaults={'reaction_type': reaction_type}
+            )
+            return True
+        except Message.DoesNotExist:
+            return False
+
+    @database_sync_to_async
+    def get_chatroom_reaction_data(self, data):
+        message_id = data.get('message_id')
+
+        try:
+            message = ChatroomMessage.objects.get(id=message_id)
+            return {
+                'message': message,
+                'chatroom_id': message.chatroom.id
+            }
+        except ChatroomMessage.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def save_chatroom_reaction(self, message_id, reaction_type):
+        try:
+            message = ChatroomMessage.objects.get(id=message_id)
+            reaction, created = ChatroomMessageReaction.objects.update_or_create(
+                message=message,
+                user=self.user,
+                defaults={'reaction_type': reaction_type}
+            )
+            return True
+        except ChatroomMessage.DoesNotExist:
+            return False
+
     async def handle_chatroom_message(self, data):
         message = await self.save_chatroom_message(data)
         if not message:
@@ -199,41 +249,65 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
         )
 
-    @database_sync_to_async
-    def save_private_reaction(self, data):
+    async def handle_private_reaction(self, data):
         message_id = data.get('message_id')
         reaction_type = data.get('reaction_type')
 
-        try:
-            message = Message.objects.get(id=message_id)
-            reaction, created = MessageReaction.objects.update_or_create(
-                message=message,
-                user=self.user,
-                defaults={'reaction_type': reaction_type}
-            )
-            return message, reaction
-        except Message.DoesNotExist:
-            return None, None
+        reaction_data = await self.get_private_reaction_data(data)
+        if not reaction_data:
+            return
 
-    @database_sync_to_async
-    def save_chatroom_reaction(self, data):
+        message = reaction_data['message']
+        recipient_username = reaction_data['recipient_username']
+
+        success = await self.save_private_reaction(message_id, reaction_type)
+        if not success:
+            return
+
+        await self.channel_layer.group_send(
+            f'user_{recipient_username}',
+            {
+                'type': 'chat_reaction',
+                'reaction': {
+                    'message_id': message.id,
+                    'reaction_type': reaction_type,
+                    'sender': self.username,
+                    'type': 'reaction'
+                }
+            }
+        )
+
+    async def handle_chatroom_reaction(self, data):
         message_id = data.get('message_id')
         reaction_type = data.get('reaction_type')
 
-        try:
-            message = ChatroomMessage.objects.get(id=message_id)
-            reaction, created = ChatroomMessageReaction.objects.update_or_create(
-                message=message,
-                user=self.user,
-                defaults={'reaction_type': reaction_type}
-            )
-            return message, reaction, message.chatroom.id
-        except ChatroomMessage.DoesNotExist:
-            return None, None, None
+        reaction_data = await self.get_chatroom_reaction_data(data)
+        if not reaction_data:
+            return
+
+        message = reaction_data['message']
+        chatroom_id = reaction_data['chatroom_id']
+
+        success = await self.save_chatroom_reaction(message_id, reaction_type)
+        if not success:
+            return
+
+        await self.channel_layer.group_send(
+            self.chatroom_group_name,
+            {
+                'type': 'chatroom_reaction',
+                'reaction': {
+                    'message_id': message.id,
+                    'reaction_type': reaction_type,
+                    'sender': self.username,
+                    'chatroom_id': chatroom_id,
+                    'type': 'reaction'
+                }
+            }
+        )
 
     async def handle_private_message(self, data):
         try:
-            # Validate required fields
             if 'recipient' not in data or not data.get('message', '') and not data.get('image_url'):
                 print(f"Missing required fields in message data: {data}")
                 return
@@ -245,7 +319,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             recipient_username = data['recipient']
 
-            # Safely get image URL
             try:
                 image_url = message.image.url if message.image else None
             except Exception as e:
@@ -264,7 +337,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             print(f"Sending message to recipient {recipient_username}: {message_data}")
 
-            # Send to recipient
             await self.channel_layer.group_send(
                 f'user_{recipient_username}',
                 {
@@ -273,7 +345,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-            # Also send to sender to ensure they see their own messages
             await self.channel_layer.group_send(
                 self.user_group_name,
                 {
@@ -286,45 +357,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         except Exception as e:
             print(f"Error in handle_private_message: {e}")
-
-    async def handle_private_reaction(self, data):
-        message, reaction = await self.save_private_reaction(data)
-        if not message:
-            return
-
-        recipient_username = message.recipient.username if message.sender == self.user else message.sender.username
-
-        await self.channel_layer.group_send(
-            f'user_{recipient_username}',
-            {
-                'type': 'chat_reaction',
-                'reaction': {
-                    'message_id': message.id,
-                    'reaction_type': reaction.reaction_type,
-                    'sender': self.username,
-                    'type': 'reaction'
-                }
-            }
-        )
-
-    async def handle_chatroom_reaction(self, data):
-        message, reaction, chatroom_id = await self.save_chatroom_reaction(data)
-        if not message:
-            return
-
-        await self.channel_layer.group_send(
-            self.chatroom_group_name,
-            {
-                'type': 'chatroom_reaction',
-                'reaction': {
-                    'message_id': message.id,
-                    'reaction_type': reaction.reaction_type,
-                    'sender': self.username,
-                    'chatroom_id': chatroom_id,
-                    'type': 'reaction'
-                }
-            }
-        )
 
     async def chat_message(self, event):
         print(f"Sending chat message to client: {event['message']}")

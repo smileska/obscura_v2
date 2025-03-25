@@ -3,6 +3,290 @@
 
 {% block title %}{{ chatroom.name }}{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Full height chat styles */
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
+.container-fluid {
+    height: calc(100vh - 80px);
+    padding-top: 10px;
+    padding-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.row {
+    flex: 1;
+    display: flex;
+}
+
+.col-md-9 {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0;
+}
+
+.card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-box {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px;
+    background-color: var(--card-bg);
+    margin-bottom: 16px;
+}
+
+#message-form {
+    margin-top: auto;
+}
+
+/* Message styling */
+.message-sent, .message-received {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+    position: relative;
+    width: 100%;
+    background-color: transparent !important;
+}
+
+.message-bubble {
+    border-radius: 16px;
+    padding: 10px 14px;
+    margin-bottom: 4px;
+    max-width: 70%;
+    word-wrap: break-word;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.message-sent .message-bubble {
+    align-self: flex-end;
+    margin-left: auto;
+    background-color: #7e3ff2;
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.message-received .message-bubble {
+    align-self: flex-start;
+    margin-right: auto;
+    background-color: #d0d0d0;
+    color: black;
+    border-bottom-left-radius: 4px;
+    min-width: 120px;
+}
+
+/* Reaction styling */
+.reaction-container {
+    display: flex;
+    position: relative;
+    min-height: 30px;
+    width: 100%;
+    z-index: 100;
+    margin-top: 2px;
+}
+
+.message-sent .reaction-container {
+    justify-content: flex-end;
+}
+
+.message-received .reaction-container {
+    justify-content: flex-start;
+}
+
+.reaction-button {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    position: relative;
+    z-index: 101;
+    visibility: visible;
+    opacity: 1;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.message-sent .reaction-button {
+    margin-right: 8px;
+}
+
+.message-received .reaction-button {
+    margin-left: 8px;
+}
+
+.reaction-popup {
+    position: absolute;
+    bottom: 30px;
+    background-color: white;
+    border-radius: 20px;
+    padding: 10px;
+    z-index: 10001;
+    display: flex;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    min-width: 250px;
+}
+
+.message-sent .reaction-popup {
+    right: 0;
+}
+
+.message-received .reaction-popup {
+    left: 0;
+}
+
+.reaction-popup button {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    padding: 5px;
+    margin: 0 5px;
+    cursor: pointer;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+}
+
+.reaction-popup button:hover {
+    transform: scale(1.2);
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Image styling */
+.message-image {
+    max-width: 250px;
+    max-height: 180px;
+    object-fit: contain;
+    border-radius: 8px;
+    margin-top: 4px;
+}
+
+/* Dark mode compatibility */
+body.dark-mode .message-received .message-bubble {
+    background-color: #444444;
+    color: #ffffff;
+}
+
+body.dark-mode .reaction-popup {
+    background-color: #333;
+}
+
+body.dark-mode .reaction-button {
+    background-color: rgba(70, 70, 70, 0.9);
+}
+
+/* Sidebar styles */
+.col-md-3 {
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+}
+
+.col-md-3 .card {
+    margin-bottom: 15px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.col-md-3 .card-body {
+    overflow-y: auto;
+}
+.message-received {
+  position: relative !important; /* Ensure the message is a positioning container */
+}
+
+.message-received .reaction-popup {
+  position: absolute !important;
+  top: -50px !important; /* Position above the message */
+  left: 0 !important;
+  right: auto !important;
+  z-index: 99999 !important;
+  border: 2px solid rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+  background-color: white !important;
+  border-radius: 20px !important;
+  padding: 8px 12px !important;
+  min-width: 250px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-around !important;
+}
+
+.message-received .reaction-popup:not(.hidden) {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+body.dark-mode .message-received .reaction-popup {
+  background-color: #333 !important;
+}
+
+.reaction-popup button {
+  background: transparent !important;
+  border: none !important;
+  font-size: 20px !important;
+  padding: 5px !important;
+  margin: 0 4px !important;
+  cursor: pointer !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px !important;
+  height: 36px !important;
+}
+
+.reaction-popup button:hover {
+  transform: scale(1.2) !important;
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+/* This CSS explicitly hides all reaction popups by default */
+.reaction-popup {
+  display: none !important;
+}
+
+/* Only show when it doesn't have the hidden class */
+.reaction-popup:not(.hidden) {
+  display: flex !important;
+}
+
+/* Hide reaction popups with the hidden class (redundant but important) */
+.reaction-popup.hidden {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row">
@@ -12,7 +296,7 @@
                     <h3 class="card-title">{{ chatroom.name }}</h3>
                 </div>
                 <div class="card-body">
-                    <div id="chatroom-messages" class="chat-box mb-3"></div>
+                    <div id="chatroom-messages" class="chat-box"></div>
 
                     <form id="message-form" class="d-flex flex-column">
                         <div class="d-flex mb-2">
@@ -246,41 +530,107 @@
             .catch(error => console.error('Error loading suggested users:', error));
     }
 
+    // Replace your existing addMessageToChat function with this completely rewritten version
     function addMessageToChat(message) {
-        const chatMessages = document.getElementById('chatroom-messages');
-        const messageDiv = document.createElement('div');
+        const chatMessages = document.getElementById('chat-messages') || document.getElementById('chatroom-messages');
 
+        // Check if message with this ID already exists (avoid duplicates)
+        if (document.querySelector(`.message[data-message-id="${message.id}"]`)) {
+            return;
+        }
+
+        const messageDiv = document.createElement('div');
         const isSentByMe = message.sender === currentUser || message.username === currentUser;
         const senderName = message.sender || message.username;
 
-        messageDiv.className = `message ${isSentByMe ? 'message-sent' : 'message-received'} mb-3`;
+        // Use a common class 'message' along with specific classes
+        messageDiv.className = `message ${isSentByMe ? 'message-sent' : 'message-received'}`;
         messageDiv.dataset.messageId = message.id;
 
-        let messageContent = `
-            <div class="message-bubble">
-                ${!isSentByMe ? `<div class="message-sender">${senderName}</div>` : ''}
-                <div class="message-content">${message.message || message.content || ''}</div>
-                ${message.image_url ? `<img src="${message.image_url}" class="message-image mt-2" alt="Image">` : ''}
-                <div class="message-time">${formatTime(message.timestamp || message.sent_at)}</div>
-            </div>
-            <div class="reaction-container">
-                <button class="reaction-button" data-message-id="${message.id}">
-                    ${message.reaction_type ? getReactionEmoji(message.reaction_type) : '<i class="far fa-smile"></i>'}
-                </button>
-                <div class="reaction-popup hidden">
-                    <button data-reaction="1">👍</button>
-                    <button data-reaction="2">❤️</button>
-                    <button data-reaction="3">😂</button>
-                    <button data-reaction="4">😮</button>
-                    <button data-reaction="5">😢</button>
-                    <button data-reaction="6">🐴</button>
-                    <button data-reaction="7">🍮</button>
-                    <button data-reaction="8">🌹</button>
-                </div>
-            </div>
-        `;
+        // Handle both formats of message (content field might be called 'message' or 'content')
+        const messageContent = message.message || message.content || '';
+        const imageUrl = message.image_url || null;
+        const timestamp = message.timestamp || message.sent_at || new Date().toISOString();
 
-        messageDiv.innerHTML = messageContent;
+        // Create bubble first
+        const messageBubble = document.createElement('div');
+        messageBubble.className = 'message-bubble';
+
+        // Add sender name for received messages
+        if (!isSentByMe) {
+            const senderDiv = document.createElement('div');
+            senderDiv.className = 'message-sender';
+            senderDiv.textContent = senderName;
+            messageBubble.appendChild(senderDiv);
+        }
+
+        // Add message content
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.textContent = messageContent;
+        messageBubble.appendChild(contentDiv);
+
+        // Add image if present
+        if (imageUrl) {
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.className = 'message-image';
+            img.alt = 'Image';
+            img.style.maxWidth = '250px';
+            img.style.maxHeight = '180px';
+            img.style.objectFit = 'contain';
+            messageBubble.appendChild(img);
+        }
+
+        // Add timestamp
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'message-time';
+        timeDiv.textContent = formatTime(timestamp);
+        messageBubble.appendChild(timeDiv);
+
+        // Add bubble to message container
+        messageDiv.appendChild(messageBubble);
+
+        // Create reaction container
+        const reactionContainer = document.createElement('div');
+        reactionContainer.className = 'reaction-container';
+
+        // Create reaction button
+        const reactionButton = document.createElement('button');
+        reactionButton.className = 'reaction-button';
+        reactionButton.dataset.messageId = message.id;
+        reactionButton.setAttribute('aria-label', 'Add reaction');
+        reactionButton.innerHTML = message.reaction_type ? getReactionEmoji(message.reaction_type) : '<i class="far fa-smile"></i>';
+
+        // Create reaction popup
+        const reactionPopup = document.createElement('div');
+        reactionPopup.className = 'reaction-popup hidden';
+
+        // Add reaction options
+        const reactions = [
+            { type: 1, emoji: '👍', label: 'Thumbs up' },
+            { type: 2, emoji: '❤️', label: 'Heart' },
+            { type: 3, emoji: '😂', label: 'Laugh' },
+            { type: 4, emoji: '😮', label: 'Wow' },
+            { type: 5, emoji: '😢', label: 'Sad' }
+        ];
+
+        reactions.forEach(reaction => {
+            const button = document.createElement('button');
+            button.dataset.reaction = reaction.type;
+            button.setAttribute('aria-label', reaction.label);
+            button.textContent = reaction.emoji;
+            reactionPopup.appendChild(button);
+        });
+
+        // Add reaction elements to container
+        reactionContainer.appendChild(reactionButton);
+        reactionContainer.appendChild(reactionPopup);
+
+        // Add reaction container to message
+        messageDiv.appendChild(reactionContainer);
+
+        // Add message to chat
         chatMessages.appendChild(messageDiv);
 
         // Scroll to bottom
@@ -445,51 +795,55 @@
         });
     } else {
         // Non-admin: suggest user
-        const suggestSearchInput = document.getElementById('suggest-search');
-        suggestSearchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            if (query.length < 2) {
-                document.getElementById('suggest-results').innerHTML = '';
+const suggestSearchInput = document.getElementById('suggest-search');
+suggestSearchInput.addEventListener('input', function() {
+    const query = this.value.trim();
+    if (query.length < 2) {
+        document.getElementById('suggest-results').innerHTML = '';
+        return;
+    }
+
+    fetch(`/chat/search-users/?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            const suggestResults = document.getElementById('suggest-results');
+            suggestResults.innerHTML = '';
+
+            if (data.users.length === 0) {
+                suggestResults.innerHTML = '<div class="alert alert-info">No users found</div>';
                 return;
             }
 
-            fetch(`/chat/search-users/?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => {
-                    const suggestResults = document.getElementById('suggest-results');
+            const resultsList = document.createElement('div');
+            resultsList.className = 'list-group';
+
+            data.users.forEach(user => {
+                const userItem = document.createElement('button');
+                userItem.className = 'list-group-item list-group-item-action';
+                userItem.textContent = user.username;
+                userItem.addEventListener('click', function() {
+                    suggestSearchInput.value = user.username;
                     suggestResults.innerHTML = '';
+                });
 
-                    if (data.users.length === 0) {
-                        suggestResults.innerHTML = '<div class="alert alert-info">No users found</div>';
-                        return;
-                    }
+                resultsList.appendChild(userItem);
+            });
 
-                    const resultsList = document.createElement('div');
-                    resultsList.className = 'list-group';
-
-                    data.users.forEach(user => {
-                        const userItem = document.createElement('button');
-                        userItem.className = 'list-group-item list-group-item-action';
-                        userItem.textContent = user.username;
-                        userItem.addEventListener('click', function() {
-                            suggestSearchInput.value = user.username;
-                            suggestResults.innerHTML = '';
-                        });
-
-                        resultsList.appendChild(userItem);
-                    });
-
-                    suggestResults.appendChild(resultsList);
-                })
-                .catch(error => console.error('Error searching users:', error));
+            suggestResults.appendChild(resultsList);
+        })
+        .catch(error => {
+            console.error('Error searching users:', error);
+            const suggestResults = document.getElementById('suggest-results');
+            suggestResults.innerHTML = '<div class="alert alert-danger">An error occurred while searching</div>';
         });
+});
 
-        document.getElementById('suggest-user-btn').addEventListener('click', function() {
-            const username = suggestSearchInput.value.trim();
-            if (!username) return;
+document.getElementById('suggest-user-btn').addEventListener('click', function() {
+    const username = suggestSearchInput.value.trim();
+    if (!username) return;
 
-            suggestUser(username);
-        });
+    suggestUser(username);
+});
     }
 
     // Leave chatroom
@@ -654,5 +1008,618 @@
         })
         .catch(error => console.error('Error leaving chatroom:', error));
     }
+    // Fix for reaction panels in received messages
+document.addEventListener('DOMContentLoaded', function() {
+  // Function to fix existing reaction panels
+  function fixReactionPanels() {
+    document.querySelectorAll('.message-received').forEach(message => {
+      // Ensure the message has position relative
+      message.style.position = 'relative';
+
+      // Fix the reaction button to ensure it's visible and clickable
+      const reactionButton = message.querySelector('.reaction-button');
+      if (reactionButton) {
+        reactionButton.style.visibility = 'visible';
+        reactionButton.style.opacity = '1';
+      }
+
+      // Make sure reaction popups are properly positioned
+      const reactionPopup = message.querySelector('.reaction-popup');
+      if (reactionPopup) {
+        reactionPopup.style.position = 'absolute';
+        reactionPopup.style.top = '-50px';
+        reactionPopup.style.left = '0';
+      }
+    });
+  }
+
+  // Run immediately
+  fixReactionPanels();
+
+  // Run again when new messages are added
+  const chatBox = document.querySelector('.chat-box');
+  if (chatBox) {
+    // Create a MutationObserver to watch for new messages
+    const observer = new MutationObserver(function() {
+      // Fix any new reaction panels
+      fixReactionPanels();
+    });
+
+    // Start observing the chat box
+    observer.observe(chatBox, {
+      childList: true,
+      subtree: true
+    });
+  }
+
+  // Make sure reaction buttons show/hide panels correctly
+  document.addEventListener('click', function(e) {
+    // If clicking a reaction button
+    if (e.target.closest('.reaction-button')) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const button = e.target.closest('.reaction-button');
+      const popup = button.nextElementSibling;
+
+      if (popup && popup.classList.contains('reaction-popup')) {
+        // Close all other popups
+        document.querySelectorAll('.reaction-popup').forEach(p => {
+          if (p !== popup) p.classList.add('hidden');
+        });
+
+        // Toggle this popup
+        popup.classList.toggle('hidden');
+      }
+    }
+    // Close all popups when clicking elsewhere
+    else if (!e.target.closest('.reaction-popup')) {
+      document.querySelectorAll('.reaction-popup').forEach(popup => {
+        popup.classList.add('hidden');
+      });
+    }
+  });
+});
+    // Fix for reaction panels that appear open by default
+document.addEventListener('DOMContentLoaded', function() {
+  // Function to hide all reaction popups on page load
+  function hideAllReactionPopups() {
+    // Find all reaction popups and add the hidden class
+    document.querySelectorAll('.reaction-popup').forEach(popup => {
+      popup.classList.add('hidden');
+    });
+    console.log('Hiding all reaction popups by default');
+  }
+
+  // Hide popups immediately
+  hideAllReactionPopups();
+
+  // Also hide after a short delay to handle any race conditions
+  setTimeout(hideAllReactionPopups, 300);
+
+  // Override the addMessageToChat function to ensure new messages have hidden popups
+  if (window.addMessageToChat) {
+    const originalAddMessageToChat = window.addMessageToChat;
+
+    window.addMessageToChat = function(message) {
+      // Call the original function
+      originalAddMessageToChat(message);
+
+      // Then make sure any new reaction popups are hidden
+      setTimeout(hideAllReactionPopups, 50);
+    };
+  }
+
+  // Set up a MutationObserver to hide popups on DOM changes
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(mutation => {
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        for (let i = 0; i < mutation.addedNodes.length; i++) {
+          const node = mutation.addedNodes[i];
+          if (node.nodeType === 1) { // Element node
+            const popups = node.querySelectorAll ? node.querySelectorAll('.reaction-popup') : [];
+            popups.forEach(popup => {
+              popup.classList.add('hidden');
+            });
+          }
+        }
+      }
+    });
+  });
+
+  // Start observing the chat container
+  const chatBoxes = document.querySelectorAll('.chat-box');
+  chatBoxes.forEach(chatBox => {
+    if (chatBox) {
+      observer.observe(chatBox, {
+        childList: true,
+        subtree: true
+      });
+    }
+  });
+
+  // Ensure reaction button clicks work properly
+  document.addEventListener('click', function(e) {
+    const button = e.target.closest('.reaction-button');
+    if (button) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const popup = button.nextElementSibling;
+      if (popup && popup.classList.contains('reaction-popup')) {
+        // Close all other popups
+        document.querySelectorAll('.reaction-popup').forEach(p => {
+          if (p !== popup) {
+            p.classList.add('hidden');
+          }
+        });
+
+        // Toggle this popup
+        popup.classList.toggle('hidden');
+      }
+    }
+    // Close popups when clicking elsewhere
+    else if (!e.target.closest('.reaction-popup')) {
+      document.querySelectorAll('.reaction-popup').forEach(popup => {
+        popup.classList.add('hidden');
+      });
+    }
+  }, true); // Use capturing to ensure this runs before other handlers
+});
+// Add this script to completely overhaul the reaction panel system
+
+(function() {
+  // Create a style element and append it to the head
+  const style = document.createElement('style');
+  style.textContent = `
+    /* Force hide all reaction popups by default */
+    .reaction-popup {
+      display: none !important;
+    }
+
+    /* Only show when explicitly toggled */
+    .reaction-popup.show-popup {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Function to initialize all reaction buttons
+  function initializeReactionSystem() {
+    // First, hide all popups
+    document.querySelectorAll('.reaction-popup').forEach(popup => {
+      popup.classList.remove('show-popup');
+      popup.classList.add('hidden');
+    });
+
+    // Remove any existing click handlers by cloning and replacing buttons
+    document.querySelectorAll('.reaction-button').forEach(button => {
+      const newButton = button.cloneNode(true);
+      button.parentNode.replaceChild(newButton, button);
+
+      // Add our new click handler
+      newButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const popup = this.nextElementSibling;
+        if (!popup) return;
+
+        // Close all other popups first
+        document.querySelectorAll('.reaction-popup').forEach(p => {
+          if (p !== popup) {
+            p.classList.remove('show-popup');
+            p.classList.add('hidden');
+          }
+        });
+
+        // Toggle this popup
+        popup.classList.toggle('show-popup');
+        popup.classList.toggle('hidden');
+      });
+    });
+
+    // Add click handlers to emoji buttons
+    document.querySelectorAll('.reaction-popup button').forEach(emojiButton => {
+      const newEmojiButton = emojiButton.cloneNode(true);
+      emojiButton.parentNode.replaceChild(newEmojiButton, emojiButton);
+
+      newEmojiButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const popup = this.closest('.reaction-popup');
+        const message = this.closest('.message-sent') || this.closest('.message-received');
+
+        if (message && this.dataset.reaction && window.sendReaction) {
+          const messageId = message.dataset.messageId;
+          const reactionType = this.dataset.reaction;
+
+          window.sendReaction(messageId, reactionType);
+
+          // Hide the popup
+          popup.classList.remove('show-popup');
+          popup.classList.add('hidden');
+        }
+      });
+    });
+
+    // Add a global click handler to close popups when clicking elsewhere
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.reaction-popup') && !e.target.closest('.reaction-button')) {
+        document.querySelectorAll('.reaction-popup').forEach(popup => {
+          popup.classList.remove('show-popup');
+          popup.classList.add('hidden');
+        });
+      }
+    });
+  }
+
+  // Override the addMessageToChat function to ensure new messages get initialized
+  if (window.addMessageToChat) {
+    const originalAddMessageToChat = window.addMessageToChat;
+
+    window.addMessageToChat = function(message) {
+      // Call the original function
+      originalAddMessageToChat(message);
+
+      // Initialize the reaction system after a short delay
+      setTimeout(initializeReactionSystem, 10);
+    };
+  }
+
+  // Function to override the default reaction-popup styling via JavaScript
+  function enforcePopupStyles() {
+    document.querySelectorAll('.reaction-popup').forEach(popup => {
+      // Make sure display is fully controlled by our classes
+      popup.style.display = 'none';
+
+      // Add the hidden class to force it to be hidden
+      popup.classList.add('hidden');
+      popup.classList.remove('show-popup');
+    });
+  }
+
+  // Run on page load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize reaction system
+      initializeReactionSystem();
+
+      // Enforce styles
+      enforcePopupStyles();
+
+      // Run again after a short delay to catch any race conditions
+      setTimeout(initializeReactionSystem, 500);
+      setTimeout(enforcePopupStyles, 600);
+    });
+  } else {
+    // Page already loaded
+    initializeReactionSystem();
+    enforcePopupStyles();
+
+    // Run again after a short delay
+    setTimeout(initializeReactionSystem, 500);
+    setTimeout(enforcePopupStyles, 600);
+  }
+
+  // Set up a MutationObserver to catch any new elements added to the DOM
+  const observer = new MutationObserver(function(mutations) {
+    let needsInit = false;
+
+    mutations.forEach(mutation => {
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        for (let i = 0; i < mutation.addedNodes.length; i++) {
+          const node = mutation.addedNodes[i];
+          if (node.nodeType === 1) { // Element node
+            // Check if this node or any of its children has a reaction panel
+            if (node.querySelector &&
+                (node.querySelector('.reaction-popup') ||
+                 node.querySelector('.reaction-button'))) {
+              needsInit = true;
+              break;
+            }
+          }
+        }
+      }
+    });
+
+    if (needsInit) {
+      // Reinitialize the reaction system
+      initializeReactionSystem();
+      enforcePopupStyles();
+    }
+  });
+
+  // Start observing
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+
+  // Also periodically check and force the styles (fallback)
+  setInterval(enforcePopupStyles, 2000);
+})();
+// Add this script to your chat.html and chatroom_detail.html files
+// This fixes the reaction popup issue and ensures reactions persist properly
+
+(function() {
+  // Create a style element for our custom styling
+  const style = document.createElement('style');
+  style.textContent = `
+    /* Explicitly control reaction popup visibility */
+    .reaction-popup {
+      display: none !important;
+      position: absolute !important;
+      z-index: 10000 !important;
+      background-color: white !important;
+      border-radius: 20px !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+      border: 2px solid rgba(0, 0, 0, 0.2) !important;
+      padding: 8px !important;
+      min-width: 250px !important;
+    }
+
+    body.dark-mode .reaction-popup {
+      background-color: #333 !important;
+    }
+
+    /* Show popup only when it has the active class */
+    .reaction-popup.active {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+
+    /* Position popups appropriately */
+    .message-sent .reaction-popup {
+      bottom: 30px !important;
+      right: 0 !important;
+    }
+
+    .message-received .reaction-popup {
+      bottom: 30px !important;
+      left: 0 !important;
+    }
+
+    /* Style reaction buttons for visibility */
+    .reaction-button {
+      opacity: 1 !important;
+      visibility: visible !important;
+      z-index: 9999 !important;
+      background-color: rgba(255, 255, 255, 0.9) !important;
+      border: 1px solid rgba(0, 0, 0, 0.1) !important;
+      transition: transform 0.2s, background-color 0.2s !important;
+    }
+
+    .reaction-button:hover {
+      transform: scale(1.2) !important;
+    }
+
+    body.dark-mode .reaction-button {
+      background-color: rgba(70, 70, 70, 0.9) !important;
+    }
+
+    /* Make emoji buttons bigger and more clickable */
+    .reaction-popup button {
+      font-size: 20px !important;
+      width: 42px !important;
+      height: 42px !important;
+      margin: 0 3px !important;
+      padding: 0 !important;
+      background: transparent !important;
+      border: none !important;
+      border-radius: 50% !important;
+      cursor: pointer !important;
+      transition: transform 0.15s !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    .reaction-popup button:hover {
+      transform: scale(1.2) !important;
+      background-color: rgba(0, 0, 0, 0.05) !important;
+    }
+  `;
+  document.head.appendChild(style);
+
+  // Global variables
+  let activePopup = null;
+
+  // Helper function to close all reaction popups
+  function closeAllPopups() {
+    document.querySelectorAll('.reaction-popup').forEach(popup => {
+      popup.classList.remove('active');
+    });
+    activePopup = null;
+  }
+
+  // Initialize the reaction system
+  function initReactionSystem() {
+    // Close all popups first to ensure a clean start
+    closeAllPopups();
+
+    // Setup reaction button click handlers
+    document.querySelectorAll('.reaction-button').forEach(button => {
+      // Remove existing listeners by cloning
+      const newButton = button.cloneNode(true);
+      if (button.parentNode) {
+        button.parentNode.replaceChild(newButton, button);
+      }
+
+      // Add new click handler
+      newButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const popup = this.nextElementSibling;
+        if (!popup || !popup.classList.contains('reaction-popup')) return;
+
+        // Close other popups
+        if (activePopup && activePopup !== popup) {
+          activePopup.classList.remove('active');
+        }
+
+        // Toggle this popup
+        popup.classList.toggle('active');
+        activePopup = popup.classList.contains('active') ? popup : null;
+      });
+    });
+
+    // Setup reaction emoji button click handlers
+    document.querySelectorAll('.reaction-popup button').forEach(emojiButton => {
+      // Remove existing listeners by cloning
+      const newButton = emojiButton.cloneNode(true);
+      if (emojiButton.parentNode) {
+        emojiButton.parentNode.replaceChild(newButton, emojiButton);
+      }
+
+      // Add new click handler
+      newButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const messageElement = this.closest('.message-sent') || this.closest('.message-received');
+        if (!messageElement) return;
+
+        const messageId = messageElement.dataset.messageId;
+        const reactionType = this.dataset.reaction;
+
+        if (messageId && reactionType && typeof window.sendReaction === 'function') {
+          // Show visual feedback immediately
+          const reactionButton = messageElement.querySelector('.reaction-button');
+          if (reactionButton) {
+            const emoji = getReactionEmoji(parseInt(reactionType));
+            reactionButton.innerHTML = emoji;
+          }
+
+          // Keep the popup visible for at least 300ms to allow the user to see the selection
+          setTimeout(() => {
+            closeAllPopups();
+
+            // Then send the reaction to the server
+            window.sendReaction(messageId, reactionType);
+          }, 300);
+        }
+      });
+    });
+
+    // Close popups when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.reaction-popup') && !e.target.closest('.reaction-button')) {
+        closeAllPopups();
+      }
+    });
+  }
+
+  // Helper function to get emoji by reaction type
+  function getReactionEmoji(reactionType) {
+    const reactions = {
+      1: '👍',
+      2: '❤️',
+      3: '😂',
+      4: '😮',
+      5: '😢',
+      6: '🐴',
+      7: '🍮',
+      8: '🌹'
+    };
+    return reactions[reactionType] || '<i class="far fa-smile"></i>';
+  }
+
+  // Modify the updateMessageReaction function to provide instant feedback
+  window.updateMessageReaction = function(messageId, reactionType) {
+    const message = document.querySelector(`.message[data-message-id="${messageId}"]`) ||
+                   document.querySelector(`.message-sent[data-message-id="${messageId}"]`) ||
+                   document.querySelector(`.message-received[data-message-id="${messageId}"]`);
+
+    if (!message) return;
+
+    const reactionButton = message.querySelector('.reaction-button');
+    if (reactionButton) {
+      reactionButton.innerHTML = getReactionEmoji(parseInt(reactionType));
+    }
+  };
+
+  // Create a MutationObserver to watch for new messages and reinitialize reaction system
+  const observer = new MutationObserver(function(mutations) {
+    let shouldReinit = false;
+
+    mutations.forEach(mutation => {
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        // Check if any new reaction-related elements were added
+        for (let i = 0; i < mutation.addedNodes.length; i++) {
+          const node = mutation.addedNodes[i];
+          if (node.nodeType === 1 && (
+              node.classList?.contains('message-sent') ||
+              node.classList?.contains('message-received') ||
+              node.querySelector?.('.reaction-button') ||
+              node.querySelector?.('.reaction-popup')
+          )) {
+            shouldReinit = true;
+            break;
+          }
+        }
+      }
+    });
+
+    if (shouldReinit) {
+      // Wait a brief moment for DOM to settle before reinitializing
+      setTimeout(initReactionSystem, 50);
+    }
+  });
+
+  // Start observing when DOM is ready
+  function startObserving() {
+    const chatBoxes = document.querySelectorAll('.chat-box');
+    chatBoxes.forEach(chatBox => {
+      if (chatBox) {
+        observer.observe(chatBox, {
+          childList: true,
+          subtree: true
+        });
+      }
+    });
+  }
+
+  // Wait for the whole page to load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      initReactionSystem();
+      startObserving();
+
+      // Run again after a short delay to catch any race conditions
+      setTimeout(initReactionSystem, 500);
+    });
+  } else {
+    // Page already loaded
+    initReactionSystem();
+    startObserving();
+
+    // Run again after a short delay
+    setTimeout(initReactionSystem, 500);
+  }
+
+  // Override the sendReaction function to improve error handling and provide feedback
+  // This will be used if the original function exists
+  if (typeof window.originalSendReaction !== 'function' && typeof window.sendReaction === 'function') {
+    window.originalSendReaction = window.sendReaction;
+
+    window.sendReaction = function(messageId, reactionType) {
+      // First update the UI immediately for responsive feedback
+      updateMessageReaction(messageId, reactionType);
+
+      // Then call the original function
+      try {
+        window.originalSendReaction(messageId, reactionType);
+      } catch (error) {
+        console.error('Error sending reaction:', error);
+      }
+    };
+  }
+})();
 </script>
 {% endblock %}
