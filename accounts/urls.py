@@ -15,5 +15,4 @@ urlpatterns = [
     path('profile/update/password/', views.update_password, name='update_password'),
     path('profile/update/picture/', views.update_profile_picture, name='update_profile_picture'),
     path('<str:username>/', views.user_profile, name='user_profile'),
-    path('toggle-dark-mode/', views.toggle_dark_mode, name='toggle_dark_mode'),
 ]
