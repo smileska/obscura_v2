@@ -248,7 +248,7 @@
 
     function addMessageToChat(message) {
     console.log("Adding message to chat:", message);
-    const chatMessages = document.getElementById('chat-messages');
+    const chatMessages = document.getElementById('chatroom-messages');
 
     // Check if message with this ID already exists (avoid duplicates)
     if (document.querySelector(`.message[data-message-id="${message.id}"]`)) {
@@ -257,50 +257,213 @@
     }
 
     const messageDiv = document.createElement('div');
-    const isSentByMe = message.sender === currentUser;
+    const isSentByMe = message.sender === currentUser || message.username === currentUser;
 
-    // Use a cleaner structure with no background
-    messageDiv.className = `message ${isSentByMe ? 'message-sent' : 'message-received'}`;
+    // SIMPLIFIED HTML STRUCTURE WITH DIRECT STYLING
+    messageDiv.className = isSentByMe ? 'message message-sent' : 'message message-received';
     messageDiv.dataset.messageId = message.id;
-    messageDiv.style.backgroundColor = 'transparent'; // Force transparent background
-
-    // Handle both formats of message (content field might be called 'message' or 'content')
-    const messageContent = message.message || message.content || '';
-    const imageUrl = message.image_url || null;
-    const timestamp = message.timestamp || new Date().toISOString();
-
-    let messageHtml = `
-        <div class="message-bubble" style="background-color: ${isSentByMe ? '#8645f4' : '#3a3a3a'}; color: white;">
-            <div class="message-content">${messageContent || ''}</div>
-            ${imageUrl ? `<img src="${imageUrl}" class="message-image" style="max-width: 120px; max-height: 120px;" alt="Image">` : ''}
-            <div class="message-time">${formatTime(timestamp)}</div>
-        </div>
-        <div class="reaction-container">
-            <button class="reaction-button" data-message-id="${message.id}">
-                ${message.reaction_type ? getReactionEmoji(message.reaction_type) : '<i class="far fa-smile"></i>'}
-            </button>
-            <div class="reaction-popup hidden">
-                <button data-reaction="1">👍</button>
-                <button data-reaction="2">❤️</button>
-                <button data-reaction="3">😂</button>
-                <button data-reaction="4">😮</button>
-                <button data-reaction="5">😢</button>
-            </div>
-        </div>
-    `;
-
-    messageDiv.innerHTML = messageHtml;
-
-    // Force transparent background again after setting innerHTML
+    messageDiv.style.width = '100%';
+    messageDiv.style.display = 'flex';
+    messageDiv.style.flexDirection = 'column';
+    messageDiv.style.alignItems = isSentByMe ? 'flex-end' : 'flex-start';
+    messageDiv.style.marginBottom = '16px';
     messageDiv.style.backgroundColor = 'transparent';
 
-    // Ensure all child elements except the bubble have transparent backgrounds
-    setTimeout(() => {
-        const children = messageDiv.querySelectorAll('*:not(.message-bubble)');
-        children.forEach(child => {
-            child.style.backgroundColor = 'transparent';
+    // User info and timestamp - small transparent box
+    const infoDiv = document.createElement('div');
+    infoDiv.style.padding = '4px 8px';
+    infoDiv.style.borderRadius = '8px';
+    infoDiv.style.marginBottom = '4px';
+    infoDiv.style.fontSize = '0.8rem';
+    infoDiv.style.backgroundColor = isSentByMe ? 'rgba(134, 69, 244, 0.2)' : 'rgba(58, 58, 58, 0.2)';
+    infoDiv.style.color = 'black'; // Set text color to black
+    infoDiv.textContent = isSentByMe ? currentUser : (message.sender || message.username);
+    infoDiv.textContent += ' • ' + formatTime(message.timestamp || message.sent_at || new Date().toISOString());
+    messageDiv.appendChild(infoDiv);
+
+    // Content bubble
+    const bubbleDiv = document.createElement('div');
+    bubbleDiv.className = 'message-bubble';
+    bubbleDiv.style.backgroundColor = isSentByMe ? '#8645f4' : '#3a3a3a';
+    bubbleDiv.style.color = 'white';
+    bubbleDiv.style.borderRadius = '16px';
+    bubbleDiv.style.padding = '10px 14px';
+    bubbleDiv.style.maxWidth = '70%';
+    bubbleDiv.style.wordWrap = 'break-word';
+    bubbleDiv.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.1)';
+
+    if (isSentByMe) {
+        bubbleDiv.style.borderBottomRightRadius = '4px';
+    } else {
+        bubbleDiv.style.borderBottomLeftRadius = '4px';
+    }
+
+    // Message content
+    const messageContent = message.message || message.content || '';
+    if (messageContent) {
+        const contentP = document.createElement('p');
+        contentP.style.margin = '0 0 4px 0';
+        contentP.textContent = messageContent;
+        bubbleDiv.appendChild(contentP);
+    }
+
+    // Image if present
+    const imageUrl = message.image_url || null;
+    if (imageUrl) {
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.className = 'message-image';
+        img.style.maxWidth = '120px';
+        img.style.maxHeight = '120px';
+        img.style.borderRadius = '8px';
+        img.style.marginTop = '4px';
+        img.alt = 'Image';
+        bubbleDiv.appendChild(img);
+    }
+
+    messageDiv.appendChild(bubbleDiv);
+
+    // Display existing reactions if any
+    if (message.reaction_type) {
+        const messageEmojis = document.createElement('div');
+        messageEmojis.className = 'message-reactions';
+        messageEmojis.style.display = 'flex';
+        messageEmojis.style.flexWrap = 'wrap';
+        messageEmojis.style.margin = '4px 0';
+        messageEmojis.style.justifyContent = isSentByMe ? 'flex-end' : 'flex-start';
+        messageEmojis.style.maxWidth = '100%';
+        messageEmojis.style.padding = '4px';
+
+        const reactionSpan = document.createElement('span');
+        reactionSpan.innerHTML = getReactionEmoji(message.reaction_type);
+        reactionSpan.style.fontSize = '20px';
+        reactionSpan.style.margin = '0 4px';
+        messageEmojis.appendChild(reactionSpan);
+
+        messageDiv.appendChild(messageEmojis);
+    }
+
+    // Reaction container with properly styled popup
+    const reactionContainer = document.createElement('div');
+    reactionContainer.className = 'reaction-container';
+    reactionContainer.style.marginTop = '4px';
+    reactionContainer.style.position = 'relative';
+    reactionContainer.style.display = 'inline-block';
+    reactionContainer.style.width = '100%';
+    reactionContainer.style.textAlign = isSentByMe ? 'right' : 'left';
+
+    const reactionButton = document.createElement('button');
+    reactionButton.className = 'reaction-button';
+    reactionButton.dataset.messageId = message.id;
+    reactionButton.innerHTML = '<i class="far fa-smile"></i>';
+    reactionButton.style.background = 'rgba(255, 255, 255, 0.8)';
+    reactionButton.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+    reactionButton.style.borderRadius = '50%';
+    reactionButton.style.width = '30px';
+    reactionButton.style.height = '30px';
+    reactionButton.style.display = 'inline-flex';
+    reactionButton.style.alignItems = 'center';
+    reactionButton.style.justifyContent = 'center';
+    reactionButton.style.fontSize = '16px';
+    reactionButton.style.cursor = 'pointer';
+    reactionButton.style.transition = 'all 0.2s';
+    reactionButton.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+    reactionButton.style.zIndex = '1';
+
+    // Create a properly styled popup
+    const reactionPopup = document.createElement('div');
+    reactionPopup.className = 'reaction-popup hidden';
+    reactionPopup.style.position = 'absolute';
+    reactionPopup.style.backgroundColor = 'white';
+    reactionPopup.style.borderRadius = '24px';
+    reactionPopup.style.padding = '6px 10px';
+    reactionPopup.style.zIndex = '100';
+    reactionPopup.style.display = 'none';
+    reactionPopup.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+    reactionPopup.style.bottom = '100%';
+    reactionPopup.style.marginBottom = '8px';
+    reactionPopup.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+    reactionPopup.style.flexDirection = 'row';
+    reactionPopup.style.justifyContent = 'center';
+    reactionPopup.style.width = 'auto';
+
+    // Position the popup based on message alignment
+    if (isSentByMe) {
+        reactionPopup.style.right = '0';
+        reactionPopup.style.left = 'auto';
+    } else {
+        reactionPopup.style.left = '0';
+        reactionPopup.style.right = 'auto';
+    }
+
+    // Create reaction buttons
+    const reactions = [
+        { type: 1, emoji: '👍' },
+        { type: 2, emoji: '❤️' },
+        { type: 3, emoji: '😂' },
+        { type: 4, emoji: '😮' },
+        { type: 5, emoji: '😢' }
+    ];
+
+    reactions.forEach(reaction => {
+        const btn = document.createElement('button');
+        btn.dataset.reaction = reaction.type;
+        btn.innerHTML = reaction.emoji;
+        btn.style.background = 'transparent';
+        btn.style.border = 'none';
+        btn.style.fontSize = '18px';
+        btn.style.padding = '6px';
+        btn.style.margin = '0 2px';
+        btn.style.cursor = 'pointer';
+        btn.style.borderRadius = '50%';
+        btn.style.width = '36px';
+        btn.style.height = '36px';
+        btn.style.display = 'flex';
+        btn.style.alignItems = 'center';
+        btn.style.justifyContent = 'center';
+
+        btn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const reactionType = this.dataset.reaction;
+            if (typeof window.sendReaction === 'function') {
+                window.sendReaction(message.id, reactionType);
+            }
+
+            reactionPopup.classList.add('hidden');
+            reactionPopup.style.display = 'none';
+        };
+
+        reactionPopup.appendChild(btn);
+    });
+
+    // Add click handler directly to the reaction button
+    reactionButton.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Close all other popups
+        document.querySelectorAll('.reaction-popup').forEach(p => {
+            if (p !== reactionPopup) {
+                p.classList.add('hidden');
+                p.style.display = 'none';
+            }
         });
-    }, 0);
+
+        // Toggle this popup
+        if (reactionPopup.classList.contains('hidden')) {
+            reactionPopup.classList.remove('hidden');
+            reactionPopup.style.display = 'flex';
+        } else {
+            reactionPopup.classList.add('hidden');
+            reactionPopup.style.display = 'none';
+        }
+    };
+
+    reactionContainer.appendChild(reactionButton);
+    reactionContainer.appendChild(reactionPopup);
+    messageDiv.appendChild(reactionContainer);
 
     chatMessages.appendChild(messageDiv);
 
@@ -675,5 +838,58 @@
         })
         .catch(error => console.error('Error leaving chatroom:', error));
     }
+    document.addEventListener('DOMContentLoaded', function() {
+    // Event delegation for reaction buttons
+    document.body.addEventListener('click', function(event) {
+        // Handle reaction button clicks
+        if (event.target.closest('.reaction-button')) {
+            const button = event.target.closest('.reaction-button');
+            const popup = button.nextElementSibling;
+
+            // Close all other popups first
+            document.querySelectorAll('.reaction-popup').forEach(p => {
+                if (p !== popup) {
+                    p.classList.add('hidden');
+                }
+            });
+
+            // Toggle the clicked popup
+            if (popup && popup.classList.contains('reaction-popup')) {
+                popup.classList.toggle('hidden');
+
+                // Position the popup correctly based on message alignment
+                const messageContainer = button.closest('.message');
+                if (messageContainer) {
+                    if (messageContainer.classList.contains('message-received')) {
+                        popup.style.left = '0';
+                        popup.style.right = 'auto';
+                    } else {
+                        popup.style.right = '0';
+                        popup.style.left = 'auto';
+                    }
+                }
+            }
+
+            event.stopPropagation();
+            return;
+        }
+
+        // Close popups when clicking elsewhere
+        document.querySelectorAll('.reaction-popup').forEach(popup => {
+            popup.classList.add('hidden');
+        });
+    });
+});
+    document.addEventListener('DOMContentLoaded', function() {
+    // Global click handler for closing popups when clicking elsewhere
+    document.body.addEventListener('click', function(e) {
+        if (!e.target.closest('.reaction-button') && !e.target.closest('.reaction-popup')) {
+            document.querySelectorAll('.reaction-popup').forEach(popup => {
+                popup.classList.add('hidden');
+                popup.style.display = 'none';
+            });
+        }
+    });
+});
 </script>
 {% endblock %}
