@@ -1,13 +1,14 @@
+# obscura/asgi.py
 import os
 from django.core.asgi import get_asgi_application
 
-# Set the Django settings module explicitly
+# Set Django settings
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'obscura.settings')
 
-# Initialize Django ASGI application early to ensure the AppRegistry is populated
+# Initialize Django
 django_asgi_app = get_asgi_application()
 
-# Import after Django is set up to avoid import errors
+# Import after Django is set up
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 import chat.routing

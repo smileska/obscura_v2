@@ -63,8 +63,12 @@ ASGI_APPLICATION = 'obscura.asgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'obscura_db',
+        'USER': 'postgres',
+        'PASSWORD': 'qwcvop123',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
