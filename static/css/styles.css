@@ -449,3 +449,421 @@ body.dark-mode .reaction-button {
     background: rgba(70, 70, 70, 0.8);
     border-color: #555;
 }
+
+/* Update message styling */
+.message-sent {
+    background-color: transparent !important; /* Remove the dark purple background */
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+}
+
+.message-sent .message-bubble {
+    background-color: #8645f4 !important; /* Lighter purple for the bubble */
+    color: white;
+    border-bottom-right-radius: 4px;
+    margin-left: auto;
+    max-width: 80%;
+}
+
+.message-received {
+    background-color: transparent !important;
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 16px;
+}
+
+.message-received .message-bubble {
+    background-color: #3a3a3a !important; /* Darker gray for received messages */
+    color: white;
+    border-bottom-left-radius: 4px;
+    max-width: 80%;
+}
+
+/* Make images smaller */
+.message-image {
+    max-width: 150px !important; /* Smaller images */
+    max-height: 150px !important;
+    border-radius: 8px;
+    margin-top: 8px;
+    object-fit: contain;
+}
+
+/* Additional style to ensure proper message layout */
+.chat-box {
+    padding: 16px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+body.dark-mode .chat-box {
+    background-color: #1a1a1a;
+}
+
+/* More specific CSS to override the purple backgrounds */
+.message-sent,
+.message-received,
+.message-sent .message-bubble,
+.message-received .message-bubble {
+    background-color: transparent !important;
+}
+
+/* Style only the content bubble */
+.message-bubble {
+    padding: 10px 14px;
+    border-radius: 18px;
+    position: relative;
+    max-width: 80%;
+    word-wrap: break-word;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.message-sent .message-bubble {
+    background-color: #8645f4 !important;
+    color: white;
+    border-bottom-right-radius: 4px;
+    margin-left: auto;
+}
+
+.message-received .message-bubble {
+    background-color: #3a3a3a !important;
+    color: white;
+    border-bottom-left-radius: 4px;
+}
+
+/* Ensure images are properly sized */
+.message-image {
+    max-width: 120px !important;
+    max-height: 120px !important;
+    border-radius: 8px;
+    margin-top: 8px;
+    object-fit: contain;
+}
+
+/* Fix any container background issues */
+.chat-box {
+    background-color: #f9f9f9;
+}
+
+body.dark-mode .chat-box {
+    background-color: #1a1a1a;
+}
+
+/* Ensure messages have proper spacing */
+.message-sent,
+.message-received {
+    margin-bottom: 16px;
+    width: 100%;
+    display: flex;
+}
+
+/* Fix for the specific case in your screenshot */
+img + div.message-sent,
+img + div.message-received {
+    background-color: transparent !important;
+}
+
+/* Additional reset to ensure nothing gets a purple background */
+.chat-box > * {
+    background-color: transparent !important;
+}
+
+/* Only the specific message bubbles should have color */
+.message-bubble {
+    background-color: #8645f4 !important;
+}
+
+.message-received .message-bubble {
+    background-color: #3a3a3a !important;
+}
+
+/* Target the purple backgrounds directly */
+.chat-box > div {
+    background-color: transparent !important;
+}
+
+/* Target any purple areas */
+[style*="background-color: rgb(126, 63, 242)"],
+[style*="background-color:#7e3ff2"],
+[style*="background: rgb(126, 63, 242)"],
+[style*="background:#7e3ff2"] {
+    background-color: transparent !important;
+}
+
+/* Make images smaller */
+.message-image {
+    max-width: 120px !important;
+    max-height: 120px !important;
+}
+
+/* Ensure only the message bubble has color */
+.message-bubble {
+    background-color: #8645f4 !important;
+    max-width: 80% !important;
+}
+
+.message-received .message-bubble {
+    background-color: #3a3a3a !important;
+    color: white !important;
+}
+
+/* Remove any other purple background */
+.message-sent, .message-received {
+    background: none !important;
+}
+
+/* Reset all message styling */
+.message-sent,
+.message-received,
+.chat-box > div,
+.chat-box > *,
+.chat-box div[style],
+.message-sent div[style],
+.message-received div[style] {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
+/* Target elements with inline styles */
+[style*="background"],
+[style*="background-color"] {
+    background-color: transparent !important;
+    background: transparent !important;
+}
+
+/* Style only the message bubbles */
+.message-bubble {
+    padding: 10px 14px;
+    border-radius: 16px;
+    max-width: 80%;
+    word-wrap: break-word;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.message-sent .message-bubble {
+    background-color: #8645f4 !important;
+    color: white !important;
+    border-bottom-right-radius: 4px;
+}
+
+.message-received .message-bubble {
+    background-color: #6f6f6f !important;
+    color: white !important;
+    border-bottom-left-radius: 4px;
+}
+
+/* Fix user info in message */
+.message-sent > div:not(.message-bubble) {
+    background-color: transparent !important;
+}
+
+.message-received > div:not(.message-bubble) {
+    background-color: transparent !important;
+}
+
+/* Make images smaller */
+.message-image {
+    max-width: 120px !important;
+    max-height: 120px !important;
+    object-fit: contain !important;
+}
+
+/* Fix the purple info box */
+[class*="message"] > div {
+    background-color: transparent !important;
+}
+
+/* Target the specific purple box in the corner */
+.chat-box > div > div[style*="background-color"] {
+    background-color: transparent !important;
+}
+
+/* Fix user and timestamp elements */
+div[style*="right"] {
+    background-color: rgba(134, 69, 244, 0.3) !important;
+    padding: 5px 10px !important;
+    border-radius: 10px !important;
+    font-size: 0.85rem !important;
+}
+
+.message-received div[style*="left"] {
+    background-color: rgba(58, 58, 58, 0.3) !important;
+}
+
+/* Fix specific case in screenshot */
+.chat-box > div {
+    position: relative;
+    margin-bottom: 16px;
+}
+
+/* Target any potential inline backgrounds on message divs */
+.chat-box > div > [style*="background"] {
+    background: transparent !important;
+}
+/* Fixed positioning for reaction popups */
+.reaction-popup {
+    position: absolute;
+    background-color: white;
+    border-radius: 24px;
+    padding: 6px 10px;
+    z-index: 100;
+    display: flex;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+    bottom: 100%;
+    margin-bottom: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* For sent messages (right-aligned), keep popup to the right */
+.message-sent .reaction-popup {
+    right: 0;
+}
+
+/* For received messages (left-aligned), position popup to the left */
+.message-received .reaction-popup {
+    left: 0;
+}
+
+/* Dark mode support */
+body.dark-mode .reaction-popup {
+    background-color: #333;
+    border-color: #444;
+}
+
+/* Remove hidden class from reaction popups when button is clicked */
+.reaction-button:focus + .reaction-popup,
+.reaction-button:active + .reaction-popup {
+    display: flex !important;
+}
+
+/* Updated reaction styling */
+.reaction-container {
+    position: relative;
+    display: inline-block;
+    margin-top: 4px;
+}
+
+.reaction-button {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 1;
+}
+
+.reaction-button:hover {
+    transform: scale(1.1);
+}
+
+.reaction-popup {
+    position: absolute;
+    background-color: white;
+    border-radius: 24px;
+    padding: 6px 10px;
+    z-index: 100;
+    display: flex;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+    bottom: 100%;
+    margin-bottom: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* For message positioning */
+.message-sent .reaction-container {
+    align-self: flex-end;
+}
+
+.message-received .reaction-container {
+    align-self: flex-start;
+}
+
+/* Ensure popup is visible */
+.reaction-popup.show {
+    display: flex !important;
+}
+
+/* Dark mode support */
+body.dark-mode .reaction-button {
+    background: rgba(70, 70, 70, 0.8);
+    border-color: #555;
+}
+
+body.dark-mode .reaction-popup {
+    background-color: #333;
+    border-color: #444;
+}
+
+/* Just to ensure it shows */
+.reaction-popup:not(.hidden) {
+    display: flex !important;
+}
+
+/* Properly style the reaction popup container */
+.reaction-popup {
+    position: absolute;
+    background-color: white !important;
+    border-radius: 24px !important;
+    padding: 6px 10px !important;
+    z-index: 100 !important;
+    display: flex !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    transition: all 0.2s ease !important;
+    bottom: 100% !important;
+    margin-bottom: 8px !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Reaction popup buttons */
+.reaction-popup button {
+    background: transparent !important;
+    border: none !important;
+    font-size: 18px !important;
+    padding: 6px 8px !important;
+    margin: 0 2px !important;
+    cursor: pointer !important;
+    border-radius: 50% !important;
+    transition: background-color 0.2s !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px !important;
+    height: 36px !important;
+}
+
+/* Reaction container positioning */
+.reaction-container {
+    position: relative !important;
+    display: inline-block !important;
+    margin-top: 4px !important;
+}
+
+/* Make username text black */
+div[style*="right"], div[style*="left"] {
+    color: black !important;
+}
+
+/* Dark mode adjustments */
+body.dark-mode .reaction-popup {
+    background-color: #333 !important;
+    border-color: #444 !important;
+}
+
+body.dark-mode div[style*="right"],
+body.dark-mode div[style*="left"] {
+    color: white !important;
+}
+
+/* Fix for the popup presentation */
+.reaction-popup:not(.hidden) {
+    display: flex !important;
+    background-color: white !important;
+}

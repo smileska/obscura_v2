@@ -102,8 +102,6 @@
             .catch(error => console.error('Error loading messages:', error));
     }
 
-    // Replace the addMessageToChat function in chat.html
-
 function addMessageToChat(message) {
     console.log("Adding message to chat:", message);
     const chatMessages = document.getElementById('chat-messages');
@@ -115,44 +113,170 @@ function addMessageToChat(message) {
     }
 
     const messageDiv = document.createElement('div');
-
     const isSentByMe = message.sender === currentUser;
 
-    messageDiv.className = `message ${isSentByMe ? 'message-sent' : 'message-received'} mb-3`;
+    // SIMPLIFIED HTML STRUCTURE WITH DIRECT STYLING
+    messageDiv.className = isSentByMe ? 'message message-sent' : 'message message-received';
     messageDiv.dataset.messageId = message.id;
+    messageDiv.style.width = '100%';
+    messageDiv.style.display = 'flex';
+    messageDiv.style.flexDirection = 'column';
+    messageDiv.style.alignItems = isSentByMe ? 'flex-end' : 'flex-start';
+    messageDiv.style.marginBottom = '16px';
+    messageDiv.style.backgroundColor = 'transparent';
 
-    // Handle both formats of message (content field might be called 'message' or 'content')
+    // User info and timestamp - small transparent box
+    const infoDiv = document.createElement('div');
+    infoDiv.style.padding = '4px 8px';
+    infoDiv.style.borderRadius = '8px';
+    infoDiv.style.marginBottom = '4px';
+    infoDiv.style.fontSize = '0.8rem';
+    infoDiv.style.backgroundColor = isSentByMe ? 'rgba(134, 69, 244, 0.2)' : 'rgba(58, 58, 58, 0.2)';
+    infoDiv.style.color = 'black'; // Set text color to black
+    infoDiv.textContent = isSentByMe ? currentUser : message.sender;
+    infoDiv.textContent += ' • ' + formatTime(message.timestamp || new Date().toISOString());
+    messageDiv.appendChild(infoDiv);
+
+    // Content bubble
+    const bubbleDiv = document.createElement('div');
+    bubbleDiv.className = 'message-bubble';
+    bubbleDiv.style.backgroundColor = isSentByMe ? '#8645f4' : '#3a3a3a';
+    bubbleDiv.style.color = 'white';
+    bubbleDiv.style.borderRadius = '16px';
+    bubbleDiv.style.padding = '10px 14px';
+    bubbleDiv.style.maxWidth = '70%';
+    bubbleDiv.style.wordWrap = 'break-word';
+    bubbleDiv.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.1)';
+
+    if (isSentByMe) {
+        bubbleDiv.style.borderBottomRightRadius = '4px';
+    } else {
+        bubbleDiv.style.borderBottomLeftRadius = '4px';
+    }
+
+    // Message content
     const messageContent = message.message || message.content || '';
+    if (messageContent) {
+        const contentP = document.createElement('p');
+        contentP.style.margin = '0 0 4px 0';
+        contentP.textContent = messageContent;
+        bubbleDiv.appendChild(contentP);
+    }
+
+    // Image if present
     const imageUrl = message.image_url || null;
-    const timestamp = message.timestamp || new Date().toISOString();
+    if (imageUrl) {
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.className = 'message-image';
+        img.style.maxWidth = '120px';
+        img.style.maxHeight = '120px';
+        img.style.borderRadius = '8px';
+        img.style.marginTop = '4px';
+        img.alt = 'Image';
+        bubbleDiv.appendChild(img);
+    }
 
-    let messageHtml = `
-        <div class="message-bubble">
-            <div class="message-content">${messageContent || ''}</div>
-            ${imageUrl ? `<img src="${imageUrl}" class="message-image mt-2" alt="Image">` : ''}
-            <div class="message-time">${formatTime(timestamp)}</div>
-        </div>
-        <div class="reaction-container">
-            <button class="reaction-button" data-message-id="${message.id}">
-                ${message.reaction_type ? getReactionEmoji(message.reaction_type) : '<i class="far fa-smile"></i>'}
-            </button>
-            <div class="reaction-popup hidden">
-                <button data-reaction="1">👍</button>
-                <button data-reaction="2">❤️</button>
-                <button data-reaction="3">😂</button>
-                <button data-reaction="4">😮</button>
-                <button data-reaction="5">😢</button>
-            </div>
-        </div>
-    `;
+    messageDiv.appendChild(bubbleDiv);
 
-    messageDiv.innerHTML = messageHtml;
+    // Reaction container with properly styled popup
+    const reactionContainer = document.createElement('div');
+    reactionContainer.className = 'reaction-container';
+    reactionContainer.style.marginTop = '4px';
+    reactionContainer.style.position = 'relative';
+    reactionContainer.style.display = 'inline-block';
+
+    const reactionButton = document.createElement('button');
+    reactionButton.className = 'reaction-button';
+    reactionButton.dataset.messageId = message.id;
+    reactionButton.innerHTML = message.reaction_type ? getReactionEmoji(message.reaction_type) : '<i class="far fa-smile"></i>';
+
+    // Create a properly styled popup
+    const reactionPopup = document.createElement('div');
+    reactionPopup.className = 'reaction-popup hidden';
+    reactionPopup.style.position = 'absolute';
+    reactionPopup.style.backgroundColor = 'white';
+    reactionPopup.style.borderRadius = '24px';
+    reactionPopup.style.padding = '6px 10px';
+    reactionPopup.style.zIndex = '100';
+    reactionPopup.style.display = 'flex';
+    reactionPopup.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+    reactionPopup.style.bottom = '100%';
+    reactionPopup.style.marginBottom = '8px';
+    reactionPopup.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+
+    // Position the popup based on message alignment
+    if (isSentByMe) {
+        reactionPopup.style.right = '0';
+    } else {
+        reactionPopup.style.left = '0';
+    }
+
+    // Create reaction buttons
+    const reactions = [
+        { type: 1, emoji: '👍' },
+        { type: 2, emoji: '❤️' },
+        { type: 3, emoji: '😂' },
+        { type: 4, emoji: '😮' },
+        { type: 5, emoji: '😢' }
+    ];
+
+    reactions.forEach(reaction => {
+        const btn = document.createElement('button');
+        btn.dataset.reaction = reaction.type;
+        btn.innerHTML = reaction.emoji;
+        btn.style.background = 'transparent';
+        btn.style.border = 'none';
+        btn.style.fontSize = '18px';
+        btn.style.padding = '6px 8px';
+        btn.style.margin = '0 2px';
+        btn.style.cursor = 'pointer';
+        btn.style.borderRadius = '50%';
+        btn.style.width = '36px';
+        btn.style.height = '36px';
+        btn.style.display = 'flex';
+        btn.style.alignItems = 'center';
+        btn.style.justifyContent = 'center';
+
+        btn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const reactionType = this.dataset.reaction;
+            if (typeof window.sendReaction === 'function') {
+                window.sendReaction(message.id, reactionType);
+            }
+
+            reactionPopup.classList.add('hidden');
+        };
+
+        reactionPopup.appendChild(btn);
+    });
+
+    // Add click handler directly to the reaction button
+    reactionButton.onclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Close all other popups
+        document.querySelectorAll('.reaction-popup').forEach(popup => {
+            if (popup !== reactionPopup) {
+                popup.classList.add('hidden');
+            }
+        });
+
+        // Toggle this popup
+        reactionPopup.classList.toggle('hidden');
+    };
+
+    reactionContainer.appendChild(reactionButton);
+    reactionContainer.appendChild(reactionPopup);
+    messageDiv.appendChild(reactionContainer);
+
     chatMessages.appendChild(messageDiv);
 
     // Scroll to bottom
     chatMessages.scrollTop = chatMessages.scrollHeight;
-
-    console.log("Message added successfully");
 }
 
     // Send message
@@ -266,5 +390,235 @@ function addMessageToChat(message) {
         })
         .catch(error => console.error('Error sending reaction:', error));
     };
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Event delegation for reaction buttons
+    document.body.addEventListener('click', function(event) {
+        // Handle reaction button clicks
+        if (event.target.closest('.reaction-button')) {
+            const button = event.target.closest('.reaction-button');
+            const popup = button.nextElementSibling;
+
+            // Close all other popups first
+            document.querySelectorAll('.reaction-popup').forEach(p => {
+                if (p !== popup) {
+                    p.classList.add('hidden');
+                }
+            });
+
+            // Toggle the clicked popup
+            if (popup && popup.classList.contains('reaction-popup')) {
+                popup.classList.toggle('hidden');
+
+                // Position the popup correctly based on message alignment
+                const messageContainer = button.closest('.message');
+                if (messageContainer) {
+                    if (messageContainer.classList.contains('message-received')) {
+                        popup.style.left = '0';
+                        popup.style.right = 'auto';
+                    } else {
+                        popup.style.right = '0';
+                        popup.style.left = 'auto';
+                    }
+                }
+            }
+
+            event.stopPropagation();
+            return;
+        }
+
+        // Handle reaction selection
+        if (event.target.closest('.reaction-popup button')) {
+            const emojiButton = event.target.closest('button');
+            const popup = emojiButton.closest('.reaction-popup');
+            const messageId = popup.previousElementSibling.dataset.messageId;
+            const reactionType = emojiButton.dataset.reaction;
+
+            // Call the sendReaction function if it exists
+            if (typeof window.sendReaction === 'function') {
+                window.sendReaction(messageId, reactionType);
+            }
+
+            // Hide the popup after selection
+            popup.classList.add('hidden');
+
+            event.stopPropagation();
+            return;
+        }
+
+        // Close popups when clicking elsewhere
+        document.querySelectorAll('.reaction-popup').forEach(popup => {
+            popup.classList.add('hidden');
+        });
+    });
+});
+
+// Replace the existing setupReactionButtons function with this one
+window.setupReactionButtons = function() {
+    document.querySelectorAll('.reaction-button').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const popup = this.nextElementSibling;
+
+            // Close all other popups
+            document.querySelectorAll('.reaction-popup').forEach(p => {
+                if (p !== popup) {
+                    p.classList.add('hidden');
+                }
+            });
+
+            // Toggle this popup
+            popup.classList.toggle('hidden');
+
+            // Position the popup correctly
+            const messageContainer = this.closest('.message');
+            if (messageContainer) {
+                if (messageContainer.classList.contains('message-received')) {
+                    popup.style.left = '0';
+                    popup.style.right = 'auto';
+                } else {
+                    popup.style.right = '0';
+                    popup.style.left = 'auto';
+                }
+            }
+        });
+    });
+};
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Add a custom stylesheet to override any existing styles
+    const style = document.createElement('style');
+    style.textContent = `
+        /* Force proper styling for reaction popups */
+        .reaction-popup {
+            position: absolute !important;
+            display: none !important; /* Hidden by default */
+            background-color: white !important;
+            border-radius: 24px !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+            border: 1px solid rgba(0, 0, 0, 0.1) !important;
+            padding: 6px 10px !important;
+            z-index: 9999 !important;
+            bottom: 100% !important;
+            margin-bottom: 8px !important;
+            flex-direction: row !important;
+            justify-content: center !important;
+            width: auto !important;
+        }
+
+        /* Show popup when not hidden */
+        .reaction-popup:not(.hidden) {
+            display: flex !important;
+        }
+
+        /* Position for sent messages */
+        .message-sent .reaction-popup {
+            right: 0 !important;
+            left: auto !important;
+        }
+
+        /* Position for received messages */
+        .message-received .reaction-popup {
+            left: 0 !important;
+            right: auto !important;
+        }
+
+        /* Style popup buttons */
+        .reaction-popup button {
+            background: transparent !important;
+            border: none !important;
+            font-size: 18px !important;
+            padding: 6px !important;
+            margin: 0 2px !important;
+            cursor: pointer !important;
+            border-radius: 50% !important;
+            width: 36px !important;
+            height: 36px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        /* Style for user info boxes */
+        div[style*="right"], div[style*="left"] {
+            color: black !important;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Manual implementation of reaction handling
+    document.body.addEventListener('click', function(e) {
+        // Handle reaction button clicks
+        if (e.target.closest('.reaction-button')) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const button = e.target.closest('.reaction-button');
+            const popup = button.nextElementSibling;
+
+            if (!popup || !popup.classList.contains('reaction-popup')) {
+                return;
+            }
+
+            // Close all other popups
+            document.querySelectorAll('.reaction-popup').forEach(p => {
+                if (p !== popup) {
+                    p.classList.add('hidden');
+                }
+            });
+
+            // Toggle this popup
+            popup.classList.toggle('hidden');
+
+            return;
+        }
+
+        // Close popups when clicking elsewhere
+        if (!e.target.closest('.reaction-popup')) {
+            document.querySelectorAll('.reaction-popup').forEach(popup => {
+                popup.classList.add('hidden');
+            });
+        }
+    });
+
+    // Custom function to force style on reaction popups (run when DOM changes)
+    const forceReactionStyle = function() {
+        document.querySelectorAll('.reaction-popup').forEach(popup => {
+            // Make sure popup has proper styling
+            popup.style.position = 'absolute';
+            popup.style.backgroundColor = 'white';
+            popup.style.borderRadius = '24px';
+            popup.style.padding = '6px 10px';
+            popup.style.zIndex = '9999';
+            popup.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+            popup.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+
+            // Position based on parent message
+            const messageContainer = popup.closest('.message');
+            if (messageContainer) {
+                if (messageContainer.classList.contains('message-received')) {
+                    popup.style.left = '0';
+                    popup.style.right = 'auto';
+                } else {
+                    popup.style.right = '0';
+                    popup.style.left = 'auto';
+                }
+            }
+        });
+    };
+
+    // Run the style fixer periodically
+    setInterval(forceReactionStyle, 500);
+
+    // Also run when new messages are added
+    const chatBox = document.getElementById('chat-messages') || document.getElementById('chatroom-messages');
+    if (chatBox) {
+        const observer = new MutationObserver(forceReactionStyle);
+        observer.observe(chatBox, { childList: true, subtree: true });
+    }
+});
 </script>
 {% endblock %}
