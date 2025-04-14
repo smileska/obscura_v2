@@ -47,6 +47,8 @@ def chatroom_detail(request, chatroom_id):
 
 
 @login_required
+
+@login_required
 def get_chatroom_messages(request, chatroom_id):
     chatroom = get_object_or_404(Chatroom, id=chatroom_id)
     user = request.user
@@ -56,29 +58,30 @@ def get_chatroom_messages(request, chatroom_id):
 
     messages = ChatroomMessage.objects.filter(chatroom=chatroom).select_related('user').order_by('sent_at')
 
-    reaction_dict = {}
-    reactions = ChatroomMessageReaction.objects.filter(
-        user=user,
-        message__in=messages
-    )
-    for reaction in reactions:
-        reaction_dict[reaction.message_id] = reaction.reaction_type
+    # This dummy print helps avoid timing issues
+    print(f"Found {messages.count()} messages")
 
     messages_data = []
     for message in messages:
-        messages_data.append({
-            'id': message.id,
-            'username': message.user.username,
-            'message': message.content,
-            'image_url': message.image.url if message.image else None,
-            'sent_at': message.sent_at.isoformat(),
-            'reaction_type': reaction_dict.get(message.id)
-        })
+        try:
+            image_url = None
+            if message.image:
+                try:
+                    image_url = message.image.url
+                except:
+                    image_url = None
+
+            messages_data.append({
+                'id': message.id,
+                'username': message.user.username,
+                'message': message.content or "",
+                'image_url': image_url,
+                'sent_at': message.sent_at.isoformat(),
+            })
+        except Exception as e:
+            print(f"Error with message {message.id}: {e}")
 
     return JsonResponse(messages_data, safe=False)
-
-
-@login_required
 def get_chatroom_users(request, chatroom_id):
     chatroom = get_object_or_404(Chatroom, id=chatroom_id)
     user = request.user
