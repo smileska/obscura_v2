@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+
 class Profile(models.Model):
     STATUS_CHOICES = (
         ('Online', 'Online'),
@@ -14,9 +15,15 @@ class Profile(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Offline')
     verification_code = models.CharField(max_length=100, blank=True, null=True)
     is_verified = models.BooleanField(default=False)
+    last_activity = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
+
+    def update_status(self, status):
+        """Update user status"""
+        self.status = status
+        self.save(update_fields=['status'])
 
 
 class UnverifiedUser(models.Model):
