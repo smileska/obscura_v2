@@ -66,7 +66,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'obscura_db',
         'USER': 'postgres',
-        'PASSWORD': 'qwcvop123',
+        'PASSWORD': # vnesete go vashiot postgresql password ovde :),
         'HOST': 'localhost',
         'PORT': '5432',
     }
