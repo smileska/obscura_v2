@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: django-config
+  namespace: obscura-messenger
+data:
+  DEBUG: "False"
+  DJANGO_SETTINGS_MODULE: "docker_settings"
+  ALLOWED_HOSTS: "localhost,127.0.0.1,obscura-messenger.local"
+  DATABASE_HOST: "postgres-service"
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "obscura_db"
+  REDIS_URL: "redis://redis-service:6379/0"
+  EMAIL_BACKEND: "django.core.mail.backends.console.EmailBackend"
+  DEFAULT_FROM_EMAIL: "noreply@obscura-messenger.local"
+  SECURE_SSL_REDIRECT: "False"
+  SESSION_COOKIE_SECURE: "False"
+  CSRF_COOKIE_SECURE: "False"
+  MEDIA_URL: "/media/"
+  MEDIA_ROOT: "/app/media"
