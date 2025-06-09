@@ -47,8 +47,6 @@ def chatroom_detail(request, chatroom_id):
 
 
 @login_required
-
-@login_required
 def get_chatroom_messages(request, chatroom_id):
     chatroom = get_object_or_404(Chatroom, id=chatroom_id)
     user = request.user
@@ -58,8 +56,15 @@ def get_chatroom_messages(request, chatroom_id):
 
     messages = ChatroomMessage.objects.filter(chatroom=chatroom).select_related('user').order_by('sent_at')
 
-    # This dummy print helps avoid timing issues
-    print(f"Found {messages.count()} messages")
+    reaction_dict = {}
+    reactions = ChatroomMessageReaction.objects.filter(
+        user=user,
+        message__in=messages
+    )
+    for reaction in reactions:
+        reaction_dict[reaction.message_id] = reaction.reaction_type
+
+    print(f"Found {reactions.count()} reactions for user {user.username}")
 
     messages_data = []
     for message in messages:
@@ -68,20 +73,31 @@ def get_chatroom_messages(request, chatroom_id):
             if message.image:
                 try:
                     image_url = message.image.url
-                except:
+                    print(f"Chatroom message {message.id} image URL: {image_url}")
+                except Exception as e:
+                    print(f"Error getting image URL for chatroom message {message.id}: {e}")
                     image_url = None
+
+            reaction_type = reaction_dict.get(message.id)
+            print(f"Message {message.id} has reaction: {reaction_type}")
 
             messages_data.append({
                 'id': message.id,
                 'username': message.user.username,
+                'sender': message.user.username,
                 'message': message.content or "",
+                'content': message.content or "",
                 'image_url': image_url,
                 'sent_at': message.sent_at.isoformat(),
+                'timestamp': message.sent_at.isoformat(),
+                'reaction_type': reaction_type
             })
         except Exception as e:
             print(f"Error with message {message.id}: {e}")
 
     return JsonResponse(messages_data, safe=False)
+
+
 def get_chatroom_users(request, chatroom_id):
     chatroom = get_object_or_404(Chatroom, id=chatroom_id)
     user = request.user
@@ -99,6 +115,7 @@ def get_chatroom_users(request, chatroom_id):
         })
 
     return JsonResponse(users_data, safe=False)
+
 
 @login_required
 def add_user_to_chatroom(request, chatroom_id):
@@ -249,6 +266,9 @@ def remove_user(request, chatroom_id):
         return JsonResponse({'success': False, 'error': 'Only admins can remove users'}, status=403)
 
     username = request.POST.get('username')
+    if not username:
+        return JsonResponse({'success': False, 'error': 'Username is required'}, status=400)
+
     try:
         user_to_remove = User.objects.get(username=username)
 
@@ -261,8 +281,11 @@ def remove_user(request, chatroom_id):
         ChatroomUser.objects.filter(chatroom=chatroom, user=user_to_remove).delete()
 
         return JsonResponse({'success': True, 'message': f'{username} removed from chatroom'})
+
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required
@@ -279,9 +302,12 @@ def leave_chatroom(request, chatroom_id):
     if chatroom.owner == user:
         return JsonResponse({'success': False, 'error': 'The owner cannot leave the chatroom'}, status=400)
 
-    ChatroomUser.objects.filter(chatroom=chatroom, user=user).delete()
+    try:
+        ChatroomUser.objects.filter(chatroom=chatroom, user=user).delete()
+        return JsonResponse({'success': True, 'message': 'You have left the chatroom'})
 
-    return JsonResponse({'success': True, 'message': 'You have left the chatroom'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required
@@ -291,11 +317,13 @@ def grant_admin(request, chatroom_id):
 
     chatroom = get_object_or_404(Chatroom, id=chatroom_id)
     user = request.user
-
     if not ChatroomUser.objects.filter(chatroom=chatroom, user=user, is_admin=True).exists():
         return JsonResponse({'success': False, 'error': 'Only admins can grant admin privileges'}, status=403)
 
     username = request.POST.get('username')
+    if not username:
+        return JsonResponse({'success': False, 'error': 'Username is required'}, status=400)
+
     try:
         user_to_promote = User.objects.get(username=username)
 
@@ -303,12 +331,18 @@ def grant_admin(request, chatroom_id):
         if not chatroom_user:
             return JsonResponse({'success': False, 'error': 'User is not a member of this chatroom'}, status=400)
 
+        if chatroom_user.is_admin:
+            return JsonResponse({'success': False, 'error': 'User is already an admin'}, status=400)
+
         chatroom_user.is_admin = True
         chatroom_user.save()
 
         return JsonResponse({'success': True, 'message': f'Admin privileges granted to {username}'})
+
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @login_required

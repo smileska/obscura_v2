@@ -4,892 +4,932 @@
 {% block title %}{{ chatroom.name }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-9">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">{{ chatroom.name }}</h3>
-                </div>
-                <div class="card-body">
-                    <div id="chatroom-messages" class="chat-box mb-3"></div>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{ chatroom.name }}</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="chatroom-messages" class="chat-box mb-3"></div>
 
-                    <form id="message-form" class="d-flex flex-column">
-                        <div class="d-flex mb-2">
-                            <input type="text" id="message-input" class="form-control me-2" placeholder="Type your message...">
-                            <button type="button" id="upload-btn" class="btn btn-outline-secondary me-2">
-                                <i class="fas fa-image"></i>
-                            </button>
-                            <button type="submit" class="btn btn-primary">Send</button>
-                        </div>
+                        <form id="message-form" class="d-flex flex-column">
+                            <div class="d-flex mb-2">
+                                <input type="text" id="message-input" class="form-control me-2"
+                                       placeholder="Type your message...">
+                                <button type="button" id="upload-btn" class="btn btn-outline-secondary me-2">
+                                    <i class="fas fa-image"></i>
+                                </button>
+                                <button type="submit" class="btn btn-primary">Send</button>
+                            </div>
 
-                        <div id="image-preview" class="mt-2 d-none">
-                            <img id="preview-img" src="" alt="Preview" class="img-thumbnail mb-2" style="max-height: 200px;">
-                            <button type="button" id="remove-image-btn" class="btn btn-sm btn-danger">Remove</button>
-                        </div>
+                            <div id="image-preview" class="mt-2 d-none">
+                                <img id="preview-img" src="" alt="Preview" class="img-thumbnail mb-2"
+                                     style="max-height: 200px;">
+                                <button type="button" id="remove-image-btn" class="btn btn-sm btn-danger">Remove
+                                </button>
+                            </div>
 
-                        <input type="file" id="image-input" accept="image/*" class="d-none">
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="card-title">Members</h5>
-                </div>
-                <div class="card-body">
-                    <ul id="chatroom-users" class="list-group list-group-flush"></ul>
+                            <input type="file" id="image-input" accept="image/*" class="d-none">
+                        </form>
+                    </div>
                 </div>
             </div>
 
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="card-title">Actions</h5>
+            <div class="col-md-3">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title">Members</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul id="chatroom-users" class="list-group list-group-flush"></ul>
+                    </div>
                 </div>
-                <div class="card-body">
-                    {% if is_admin %}
-                    <div class="mb-3">
-                        <h6>Add User</h6>
-                        <div class="input-group">
-                            <input type="text" id="user-search" class="form-control" placeholder="Username">
-                            <button id="add-user-btn" class="btn btn-outline-primary">Add</button>
-                        </div>
-                        <div id="search-results" class="mt-2"></div>
-                    </div>
 
-                    <div class="mb-3">
-                        <h6>Suggested Users</h6>
-                        <ul id="suggested-users" class="list-group list-group-flush"></ul>
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="card-title">Actions</h5>
                     </div>
-                    {% else %}
-                    <div class="mb-3">
-                        <h6>Suggest User</h6>
-                        <div class="input-group">
-                            <input type="text" id="suggest-search" class="form-control" placeholder="Username">
-                            <button id="suggest-user-btn" class="btn btn-outline-primary">Suggest</button>
-                        </div>
-                        <div id="suggest-results" class="mt-2"></div>
-                    </div>
-                    {% endif %}
+                    <div class="card-body">
+                        {% if is_admin %}
+                            <div class="mb-3">
+                                <h6>Add User</h6>
+                                <div class="input-group">
+                                    <input type="text" id="user-search" class="form-control" placeholder="Username">
+                                    <button id="add-user-btn" class="btn btn-outline-primary">Add</button>
+                                </div>
+                                <div id="search-results" class="mt-2"></div>
+                            </div>
 
-                    <button id="leave-btn" class="btn btn-danger w-100">Leave Chatroom</button>
+                            <div class="mb-3">
+                                <h6>Suggested Users</h6>
+                                <ul id="suggested-users" class="list-group list-group-flush"></ul>
+                            </div>
+                        {% else %}
+                            <div class="mb-3">
+                                <h6>Suggest User</h6>
+                                <div class="input-group">
+                                    <input type="text" id="suggest-search" class="form-control" placeholder="Username">
+                                    <button id="suggest-user-btn" class="btn btn-outline-primary">Suggest</button>
+                                </div>
+                                <div id="suggest-results" class="mt-2"></div>
+                            </div>
+                        {% endif %}
+
+                        <button id="leave-btn" class="btn btn-danger w-100">Leave Chatroom</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    const currentUser = "{{ request.user.username }}";
-    const chatroomId = "{{ chatroom.id }}";
-    const isAdmin = {% if is_admin %}true{% else %}false{% endif %};
-    const csrfToken = "{{ csrf_token }}";
+    <script>
+        const currentUser = "{{ request.user.username }}";
+        const chatroomId = "{{ chatroom.id }}";
+        const isAdmin = {% if is_admin %}true{% else %}false{% endif %};
+        const csrfToken = "{{ csrf_token }}";
 
-    // WebSocket connection
-    let socket;
+        // WebSocket connection
+        let socket;
+        let socketReady = false;
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize WebSocket connection
-        socket = new WebSocket(`ws://${window.location.host}/ws/chat/`);
-        console.log("Attempting to connect to WebSocket...");
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const socketUrl = `${protocol}//${window.location.host}/ws/chat/`;
 
-        socket.onopen = function(e) {
-            console.log("WebSocket connection established successfully!");
-            // Authenticate with the server and join chatroom
-            socket.send(JSON.stringify({
-                'type': 'authentication',
-                'username': currentUser,
-                'chatroom_id': chatroomId
-            }));
-            console.log("Authentication message sent");
+            console.log("Connecting to WebSocket:", socketUrl);
+            socket = new WebSocket(socketUrl);
 
-            // Load messages and users
-            loadMessages();
-            loadUsers();
+            socket.onopen = function (e) {
+                console.log("WebSocket connection established successfully!");
+                socketReady = true;
 
-            if (isAdmin) {
-                loadSuggestedUsers();
+                // Send authentication for chatroom
+                socket.send(JSON.stringify({
+                    'type': 'authentication',
+                    'username': currentUser,
+                    'chatroom_id': chatroomId
+                }));
+
+                // Load existing messages
+                loadMessages();
+                loadUsers();
+                if (isAdmin) {
+                    loadSuggestedUsers();
+                }
+            };
+
+            socket.onmessage = function (e) {
+                console.log("WebSocket message received:", e.data);
+                try {
+                    const data = JSON.parse(e.data);
+                    console.log("Parsed data:", data);
+
+                    if (data.type === 'message' && data.chatroom_id == chatroomId) {
+                        console.log("Adding message to chat:", data);
+                        addMessageToChat(data);
+                    } else if (data.type === 'reaction' && data.chatroom_id == chatroomId) {
+                        updateMessageReaction(data.message_id, data.reaction_type);
+                    }
+                } catch (error) {
+                    console.error("Error parsing WebSocket message:", error);
+                }
+            };
+
+            socket.onclose = function (e) {
+                console.log("WebSocket connection closed. Code:", e.code, "Reason:", e.reason);
+                socketReady = false;
+
+                // Attempt to reconnect after 3 seconds
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            socket.onerror = function (e) {
+                console.error("WebSocket error:", e);
+                socketReady = false;
+            };
+        }
+
+        // Load messages from server - EXACT SAME AS CHAT.HTML
+        function loadMessages() {
+            console.log("Loading messages for chatroom:", chatroomId);
+            fetch(`/chatrooms/${chatroomId}/messages/`)
+                .then(response => {
+                    console.log("Messages fetch response status:", response.status);
+                    return response.json();
+                })
+                .then(messages => {
+                    console.log("Loaded messages:", messages);
+                    const chatMessages = document.getElementById('chatroom-messages');
+                    chatMessages.innerHTML = '';
+
+                    messages.forEach(message => {
+                        addMessageToChat(message);
+                    });
+
+                    // Scroll to bottom
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                })
+                .catch(error => {
+                    console.error('Error loading messages:', error);
+                });
+        }
+
+        // EXACT SAME FUNCTION AS CHAT.HTML - FIXED VERSION
+        function addMessageToChat(message) {
+            console.log("Adding message to chat:", message);
+            const chatMessages = document.getElementById('chatroom-messages');
+
+            // Check if message with this ID already exists (avoid duplicates)
+            if (document.querySelector(`.message[data-message-id="${message.id}"]`)) {
+                console.log("Message already exists in chat, skipping");
+                return;
             }
-        };
 
-        socket.onmessage = function(e) {
-            console.log("Message received from server:", e.data);
-            const data = JSON.parse(e.data);
+            const messageDiv = document.createElement('div');
+            const isSentByMe = (message.sender === currentUser) || (message.username === currentUser);
 
-            if (data.type === 'message' && data.chatroom_id == chatroomId) {
-                addMessageToChat(data);
-            } else if (data.type === 'reaction' && data.chatroom_id == chatroomId) {
-                updateMessageReaction(data.message_id, data.reaction_type);
+            messageDiv.className = isSentByMe ? 'message message-sent' : 'message message-received';
+            messageDiv.dataset.messageId = message.id;
+            messageDiv.style.width = '100%';
+            messageDiv.style.display = 'flex';
+            messageDiv.style.flexDirection = 'column';
+            messageDiv.style.alignItems = isSentByMe ? 'flex-end' : 'flex-start';
+            messageDiv.style.marginBottom = '16px';
+            messageDiv.style.backgroundColor = 'transparent';
+
+            // User info and timestamp
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'message-info';
+            infoDiv.style.padding = '4px 8px';
+            infoDiv.style.borderRadius = '8px';
+            infoDiv.style.marginBottom = '4px';
+            infoDiv.style.fontSize = '0.8rem';
+            infoDiv.style.backgroundColor = isSentByMe ? 'rgba(134, 69, 244, 0.2)' : 'rgba(58, 58, 58, 0.2)';
+            infoDiv.style.color = 'black';
+            infoDiv.textContent = isSentByMe ? currentUser : (message.sender || message.username);
+            infoDiv.textContent += ' • ' + formatTime(message.timestamp || message.sent_at || new Date().toISOString());
+            messageDiv.appendChild(infoDiv);
+
+            // Content bubble
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+            bubbleDiv.style.backgroundColor = isSentByMe ? '#8645f4' : '#3a3a3a';
+            bubbleDiv.style.color = 'white';
+            bubbleDiv.style.borderRadius = '16px';
+            bubbleDiv.style.padding = '10px 14px';
+            bubbleDiv.style.maxWidth = '70%';
+            bubbleDiv.style.wordWrap = 'break-word';
+            bubbleDiv.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.1)';
+
+            if (isSentByMe) {
+                bubbleDiv.style.borderBottomRightRadius = '4px';
+            } else {
+                bubbleDiv.style.borderBottomLeftRadius = '4px';
             }
-        };
 
-        socket.onclose = function(e) {
-            console.log("WebSocket connection closed. Code:", e.code, "Reason:", e.reason);
-        };
+            // Message content
+            const messageContent = message.message || message.content || '';
+            if (messageContent) {
+                const contentP = document.createElement('p');
+                contentP.style.margin = '0 0 4px 0';
+                contentP.style.color = 'white';
+                contentP.textContent = messageContent;
+                bubbleDiv.appendChild(contentP);
+            }
 
-        socket.onerror = function(e) {
-            console.error("WebSocket error:", e);
-        };
-    });
+            // Image if present
+            const imageUrl = message.image_url || null;
+            if (imageUrl) {
+                const img = document.createElement('img');
+                img.src = imageUrl;
+                img.className = 'message-image';
+                img.style.maxWidth = '120px';
+                img.style.maxHeight = '120px';
+                img.style.borderRadius = '8px';
+                img.style.marginTop = '4px';
+                img.alt = 'Image';
+                bubbleDiv.appendChild(img);
+            }
 
-    // Load messages
-    function loadMessages() {
-        fetch(`/chatrooms/${chatroomId}/messages/`)
-            .then(response => response.json())
-            .then(messages => {
-                const chatMessages = document.getElementById('chatroom-messages');
-                chatMessages.innerHTML = '';
+            messageDiv.appendChild(bubbleDiv);
 
-                messages.forEach(message => {
-                    addMessageToChat(message);
+            // Reaction container - SAME POSITION AS CHATROOM (BELOW MESSAGE)
+            const reactionContainer = document.createElement('div');
+            reactionContainer.className = 'reaction-container';
+            reactionContainer.style.marginTop = '4px';
+            reactionContainer.style.position = 'relative';
+            reactionContainer.style.display = 'flex';
+            reactionContainer.style.alignItems = 'center';
+            reactionContainer.style.justifyContent = isSentByMe ? 'flex-end' : 'flex-start';
+
+            // Show existing reaction with WHITE BACKGROUND if any
+            if (message.reaction_type) {
+                const existingReaction = document.createElement('span');
+                existingReaction.className = 'existing-reaction';
+                existingReaction.innerHTML = getReactionEmoji(message.reaction_type);
+                existingReaction.style.cssText = `
+                font-size: 16px;
+                margin-right: 8px;
+                background: white;
+                padding: 4px 8px;
+                border-radius: 16px;
+                border: 1px solid #ddd;
+                display: inline-block;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            `;
+                reactionContainer.appendChild(existingReaction);
+            }
+
+            const reactionButton = document.createElement('button');
+            reactionButton.className = 'reaction-button';
+            reactionButton.dataset.messageId = message.id;
+            reactionButton.innerHTML = '<i class="far fa-smile"></i>';
+            reactionButton.style.cssText = `
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+        `;
+
+            // Create reaction popup
+            const reactionPopup = document.createElement('div');
+            reactionPopup.className = 'reaction-popup hidden';
+            reactionPopup.style.position = 'absolute';
+            reactionPopup.style.backgroundColor = 'white';
+            reactionPopup.style.borderRadius = '24px';
+            reactionPopup.style.padding = '6px 10px';
+            reactionPopup.style.zIndex = '100';
+            reactionPopup.style.display = 'flex';
+            reactionPopup.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
+            reactionPopup.style.bottom = '100%';
+            reactionPopup.style.marginBottom = '8px';
+            reactionPopup.style.border = '1px solid rgba(0, 0, 0, 0.1)';
+
+            // Position popup
+            if (isSentByMe) {
+                reactionPopup.style.right = '0';
+            } else {
+                reactionPopup.style.left = '0';
+            }
+
+            // Create reaction buttons
+            const reactions = [
+                {type: 1, emoji: '👍'},
+                {type: 2, emoji: '❤️'},
+                {type: 3, emoji: '😂'},
+                {type: 4, emoji: '😮'},
+                {type: 5, emoji: '😢'}
+            ];
+
+            reactions.forEach(reaction => {
+                const btn = document.createElement('button');
+                btn.dataset.reaction = reaction.type;
+                btn.innerHTML = reaction.emoji;
+                btn.style.background = 'transparent';
+                btn.style.border = 'none';
+                btn.style.fontSize = '18px';
+                btn.style.padding = '6px 8px';
+                btn.style.margin = '0 2px';
+                btn.style.cursor = 'pointer';
+                btn.style.borderRadius = '50%';
+                btn.style.width = '36px';
+                btn.style.height = '36px';
+                btn.style.display = 'flex';
+                btn.style.alignItems = 'center';
+                btn.style.justifyContent = 'center';
+
+                btn.onclick = function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const reactionType = this.dataset.reaction;
+                    if (typeof window.sendReaction === 'function') {
+                        window.sendReaction(message.id, reactionType);
+                    }
+
+                    reactionPopup.classList.add('hidden');
+                };
+
+                reactionPopup.appendChild(btn);
+            });
+
+            // Reaction button click handler
+            reactionButton.onclick = function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Close all other popups
+                document.querySelectorAll('.reaction-popup').forEach(popup => {
+                    if (popup !== reactionPopup) {
+                        popup.classList.add('hidden');
+                    }
                 });
 
-                // Scroll to bottom
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            })
-            .catch(error => console.error('Error loading messages:', error));
-    }
+                // Toggle this popup
+                reactionPopup.classList.toggle('hidden');
+            };
 
-    // Load users
-    function loadUsers() {
-        fetch(`/chatrooms/${chatroomId}/users/`)
-            .then(response => response.json())
-            .then(users => {
-                const usersList = document.getElementById('chatroom-users');
-                usersList.innerHTML = '';
+            reactionContainer.appendChild(reactionButton);
+            reactionContainer.appendChild(reactionPopup);
+            messageDiv.appendChild(reactionContainer);
 
-                users.forEach(user => {
-                    const userItem = document.createElement('li');
-                    userItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+            chatMessages.appendChild(messageDiv);
 
-                    let userContent = `<span>${user.username}`;
-                    if (user.is_admin) {
-                        userContent += ' <span class="badge bg-primary">Admin</span>';
-                    }
-                    userContent += '</span>';
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
 
-                    userItem.innerHTML = userContent;
+        // Send message function - SAME AS CHAT.HTML
+        function sendMessage(messageText, imageUrl = null) {
+            if (!socketReady) {
+                console.error("WebSocket not ready");
+                return false;
+            }
 
-                    if (isAdmin && user.username !== currentUser) {
-                        const actionButtons = document.createElement('div');
-                        actionButtons.className = 'btn-group btn-group-sm';
+            const data = {
+                type: 'message',
+                chatroom_id: chatroomId,
+                sender: currentUser,
+                message: messageText,
+                image_url: imageUrl
+            };
 
-                        if (!user.is_admin) {
-                            const makeAdminBtn = document.createElement('button');
-                            makeAdminBtn.className = 'btn btn-outline-primary';
-                            makeAdminBtn.textContent = 'Make Admin';
-                            makeAdminBtn.addEventListener('click', function() {
-                                makeUserAdmin(user.username);
-                            });
-                            actionButtons.appendChild(makeAdminBtn);
-                        }
+            console.log("Sending message:", data);
+            socket.send(JSON.stringify(data));
+            return true;
+        }
 
-                        const removeBtn = document.createElement('button');
-                        removeBtn.className = 'btn btn-outline-danger';
-                        removeBtn.textContent = 'Remove';
-                        removeBtn.addEventListener('click', function() {
-                            removeUser(user.username);
-                        });
-                        actionButtons.appendChild(removeBtn);
+        // Handle image upload
+        let currentUploadedImageUrl = null;
 
-                        userItem.appendChild(actionButtons);
-                    }
+        // Message form handler - SAME AS CHAT.HTML
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log("DOM loaded, connecting WebSocket...");
+            connectWebSocket();
 
-                    usersList.appendChild(userItem);
-                });
-            })
-            .catch(error => console.error('Error loading users:', error));
-    }
+            document.getElementById('message-form').addEventListener('submit', function (e) {
+                e.preventDefault();
 
-    // Load suggested users
-    function loadSuggestedUsers() {
-        fetch(`/chatrooms/${chatroomId}/suggested-users/`)
-            .then(response => response.json())
-            .then(users => {
-                const suggestedUsersList = document.getElementById('suggested-users');
-                suggestedUsersList.innerHTML = '';
+                const messageInput = document.getElementById('message-input');
+                const message = messageInput.value.trim();
 
-                if (users.length === 0) {
-                    suggestedUsersList.innerHTML = '<li class="list-group-item">No suggested users</li>';
+                if (!message && !currentUploadedImageUrl) {
                     return;
                 }
 
-                users.forEach(user => {
-                    const userItem = document.createElement('li');
-                    userItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    userItem.innerHTML = `
+                if (sendMessage(message, currentUploadedImageUrl)) {
+                    // Clear inputs only if message was sent successfully
+                    messageInput.value = '';
+                    clearImagePreview();
+                    currentUploadedImageUrl = null;
+                }
+            });
+
+            // Image upload handlers - SAME AS CHAT.HTML
+            document.getElementById('upload-btn').addEventListener('click', function () {
+                document.getElementById('image-input').click();
+            });
+
+            document.getElementById('image-input').addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('preview-img').src = e.target.result;
+                    document.getElementById('image-preview').classList.remove('d-none');
+                };
+                reader.readAsDataURL(file);
+
+                // Upload the image
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('csrfmiddlewaretoken', csrfToken);
+
+                fetch('/chat/upload-image/', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            currentUploadedImageUrl = data.image_url;
+                        } else {
+                            console.error('Error uploading image:', data.error);
+                            clearImagePreview();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        clearImagePreview();
+                    });
+            });
+
+            document.getElementById('remove-image-btn').addEventListener('click', clearImagePreview);
+
+            // Admin features
+            initializeAdminFeatures();
+        });
+
+        function clearImagePreview() {
+            document.getElementById('image-preview').classList.add('d-none');
+            document.getElementById('preview-img').src = '';
+            document.getElementById('image-input').value = '';
+            currentUploadedImageUrl = null;
+        }
+
+        // Send reaction function - SAME AS CHAT.HTML
+        window.sendReaction = function (messageId, reactionType) {
+            console.log(`Sending reaction: message=${messageId}, reaction=${reactionType}`);
+
+            const formData = new FormData();
+            formData.append('reaction_type', reactionType);
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch(`/chatrooms/message/${messageId}/react/`, {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log("Reaction sent successfully");
+                        updateMessageReaction(messageId, reactionType);
+
+                        // Send via WebSocket for real-time updates
+                        if (socketReady) {
+                            socket.send(JSON.stringify({
+                                'type': 'reaction',
+                                'message_id': messageId,
+                                'reaction_type': reactionType,
+                                'chatroom_id': chatroomId
+                            }));
+                        }
+                    } else {
+                        console.error("Error sending reaction:", data.error || "Unknown error");
+                    }
+                })
+                .catch(error => console.error('Error sending reaction:', error));
+        };
+
+        // SAME AS CHAT.HTML - Update to show WHITE BACKGROUND for reactions
+        function updateMessageReaction(messageId, reactionType) {
+            const messageDiv = document.querySelector(`.message[data-message-id="${messageId}"]`);
+            if (!messageDiv) {
+                return;
+            }
+
+            const reactionContainer = messageDiv.querySelector('.reaction-container');
+            if (!reactionContainer) return;
+
+            // Find existing reaction display or create new one
+            let existingReaction = reactionContainer.querySelector('.existing-reaction');
+            if (!existingReaction) {
+                existingReaction = document.createElement('span');
+                existingReaction.className = 'existing-reaction';
+                existingReaction.style.cssText = `
+                font-size: 16px;
+                margin-right: 8px;
+                background: white;
+                padding: 4px 8px;
+                border-radius: 16px;
+                border: 1px solid #ddd;
+                display: inline-block;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            `;
+
+                // Insert before the reaction button (smiley face button)
+                const reactionButton = reactionContainer.querySelector('.reaction-button');
+                if (reactionButton) {
+                    reactionContainer.insertBefore(existingReaction, reactionButton);
+                } else {
+                    reactionContainer.appendChild(existingReaction);
+                }
+            }
+
+            existingReaction.innerHTML = getReactionEmoji(reactionType);
+        }
+
+        function getReactionEmoji(reactionType) {
+            const reactions = {
+                1: '👍',
+                2: '❤️',
+                3: '😂',
+                4: '😮',
+                5: '😢'
+            };
+            return reactions[reactionType] || '<i class="far fa-smile"></i>';
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        }
+
+        // Close popups when clicking elsewhere - SAME AS CHAT.HTML
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('.reaction-button') && !e.target.closest('.reaction-popup')) {
+                document.querySelectorAll('.reaction-popup').forEach(popup => {
+                    popup.classList.add('hidden');
+                });
+            }
+        });
+
+        // CHATROOM SPECIFIC FUNCTIONS
+        function loadUsers() {
+            fetch(`/chatrooms/${chatroomId}/users/`)
+                .then(response => response.json())
+                .then(users => {
+                    const usersList = document.getElementById('chatroom-users');
+                    usersList.innerHTML = '';
+
+                    users.forEach(user => {
+                        const userItem = document.createElement('li');
+                        userItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+                        let userContent = `<span>${user.username}`;
+                        if (user.is_admin) {
+                            userContent += ' <span class="badge bg-primary">Admin</span>';
+                        }
+                        userContent += '</span>';
+
+                        userItem.innerHTML = userContent;
+
+                        if (isAdmin && user.username !== currentUser) {
+                            const actionButtons = document.createElement('div');
+                            actionButtons.className = 'btn-group btn-group-sm';
+
+                            if (!user.is_admin) {
+                                const makeAdminBtn = document.createElement('button');
+                                makeAdminBtn.className = 'btn btn-outline-primary';
+                                makeAdminBtn.textContent = 'Make Admin';
+                                makeAdminBtn.onclick = () => makeUserAdmin(user.username);
+                                actionButtons.appendChild(makeAdminBtn);
+                            }
+
+                            const removeBtn = document.createElement('button');
+                            removeBtn.className = 'btn btn-outline-danger';
+                            removeBtn.textContent = 'Remove';
+                            removeBtn.onclick = () => removeUser(user.username);
+                            actionButtons.appendChild(removeBtn);
+
+                            userItem.appendChild(actionButtons);
+                        }
+
+                        usersList.appendChild(userItem);
+                    });
+                })
+                .catch(error => console.error('Error loading users:', error));
+        }
+
+        function loadSuggestedUsers() {
+            if (!isAdmin) return;
+
+            fetch(`/chatrooms/${chatroomId}/suggested-users/`)
+                .then(response => response.json())
+                .then(users => {
+                    const suggestedUsersList = document.getElementById('suggested-users');
+                    suggestedUsersList.innerHTML = '';
+
+                    if (users.length === 0) {
+                        suggestedUsersList.innerHTML = '<li class="list-group-item">No suggested users</li>';
+                        return;
+                    }
+
+                    users.forEach(user => {
+                        const userItem = document.createElement('li');
+                        userItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        userItem.innerHTML = `
                         <span>${user.username}</span>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-success approve-btn" data-user-id="${user.id}">Approve</button>
-                            <button class="btn btn-outline-danger delete-btn" data-user-id="${user.id}">Delete</button>
+                            <button class="btn btn-outline-success" onclick="approveSuggestion(${user.id})">Approve</button>
+                            <button class="btn btn-outline-danger" onclick="deleteSuggestion(${user.id})">Delete</button>
                         </div>
                     `;
-
-                    suggestedUsersList.appendChild(userItem);
-
-                    // Add event listeners
-                    const approveBtn = userItem.querySelector('.approve-btn');
-                    approveBtn.addEventListener('click', function() {
-                        approveSuggestion(user.id);
+                        suggestedUsersList.appendChild(userItem);
                     });
-
-                    const deleteBtn = userItem.querySelector('.delete-btn');
-                    deleteBtn.addEventListener('click', function() {
-                        deleteSuggestion(user.id);
-                    });
-                });
-            })
-            .catch(error => console.error('Error loading suggested users:', error));
-    }
-
-    function addMessageToChat(message) {
-    console.log("Adding message to chat:", message);
-    const chatMessages = document.getElementById('chatroom-messages');
-
-    // Check if message with this ID already exists (avoid duplicates)
-    if (document.querySelector(`.message[data-message-id="${message.id}"]`)) {
-        console.log("Message already exists in chat, skipping");
-        return;
-    }
-
-    const messageDiv = document.createElement('div');
-    const isSentByMe = message.sender === currentUser || message.username === currentUser;
-
-    // SIMPLIFIED HTML STRUCTURE WITH DIRECT STYLING
-    messageDiv.className = isSentByMe ? 'message message-sent' : 'message message-received';
-    messageDiv.dataset.messageId = message.id;
-    messageDiv.style.width = '100%';
-    messageDiv.style.display = 'flex';
-    messageDiv.style.flexDirection = 'column';
-    messageDiv.style.alignItems = isSentByMe ? 'flex-end' : 'flex-start';
-    messageDiv.style.marginBottom = '16px';
-    messageDiv.style.backgroundColor = 'transparent';
-
-    // User info and timestamp - small transparent box
-    const infoDiv = document.createElement('div');
-    infoDiv.style.padding = '4px 8px';
-    infoDiv.style.borderRadius = '8px';
-    infoDiv.style.marginBottom = '4px';
-    infoDiv.style.fontSize = '0.8rem';
-    infoDiv.style.backgroundColor = isSentByMe ? 'rgba(134, 69, 244, 0.2)' : 'rgba(58, 58, 58, 0.2)';
-    infoDiv.style.color = 'black'; // Set text color to black
-    infoDiv.textContent = isSentByMe ? currentUser : (message.sender || message.username);
-    infoDiv.textContent += ' • ' + formatTime(message.timestamp || message.sent_at || new Date().toISOString());
-    messageDiv.appendChild(infoDiv);
-
-    // Content bubble
-    const bubbleDiv = document.createElement('div');
-    bubbleDiv.className = 'message-bubble';
-    bubbleDiv.style.backgroundColor = isSentByMe ? '#8645f4' : '#3a3a3a';
-    bubbleDiv.style.color = 'white';
-    bubbleDiv.style.borderRadius = '16px';
-    bubbleDiv.style.padding = '10px 14px';
-    bubbleDiv.style.maxWidth = '70%';
-    bubbleDiv.style.wordWrap = 'break-word';
-    bubbleDiv.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.1)';
-
-    if (isSentByMe) {
-        bubbleDiv.style.borderBottomRightRadius = '4px';
-    } else {
-        bubbleDiv.style.borderBottomLeftRadius = '4px';
-    }
-
-    // Message content
-    const messageContent = message.message || message.content || '';
-    if (messageContent) {
-        const contentP = document.createElement('p');
-        contentP.style.margin = '0 0 4px 0';
-        contentP.textContent = messageContent;
-        bubbleDiv.appendChild(contentP);
-    }
-
-    // Image if present
-    const imageUrl = message.image_url || null;
-    if (imageUrl) {
-        const img = document.createElement('img');
-        img.src = imageUrl;
-        img.className = 'message-image';
-        img.style.maxWidth = '120px';
-        img.style.maxHeight = '120px';
-        img.style.borderRadius = '8px';
-        img.style.marginTop = '4px';
-        img.alt = 'Image';
-        bubbleDiv.appendChild(img);
-    }
-
-    messageDiv.appendChild(bubbleDiv);
-
-    // Display existing reactions if any
-    if (message.reaction_type) {
-        const messageEmojis = document.createElement('div');
-        messageEmojis.className = 'message-reactions';
-        messageEmojis.style.display = 'flex';
-        messageEmojis.style.flexWrap = 'wrap';
-        messageEmojis.style.margin = '4px 0';
-        messageEmojis.style.justifyContent = isSentByMe ? 'flex-end' : 'flex-start';
-        messageEmojis.style.maxWidth = '100%';
-        messageEmojis.style.padding = '4px';
-
-        const reactionSpan = document.createElement('span');
-        reactionSpan.innerHTML = getReactionEmoji(message.reaction_type);
-        reactionSpan.style.fontSize = '20px';
-        reactionSpan.style.margin = '0 4px';
-        messageEmojis.appendChild(reactionSpan);
-
-        messageDiv.appendChild(messageEmojis);
-    }
-
-    // Reaction container with properly styled popup
-    const reactionContainer = document.createElement('div');
-    reactionContainer.className = 'reaction-container';
-    reactionContainer.style.marginTop = '4px';
-    reactionContainer.style.position = 'relative';
-    reactionContainer.style.display = 'inline-block';
-    reactionContainer.style.width = '100%';
-    reactionContainer.style.textAlign = isSentByMe ? 'right' : 'left';
-
-    const reactionButton = document.createElement('button');
-    reactionButton.className = 'reaction-button';
-    reactionButton.dataset.messageId = message.id;
-    reactionButton.innerHTML = '<i class="far fa-smile"></i>';
-    reactionButton.style.background = 'rgba(255, 255, 255, 0.8)';
-    reactionButton.style.border = '1px solid rgba(0, 0, 0, 0.1)';
-    reactionButton.style.borderRadius = '50%';
-    reactionButton.style.width = '30px';
-    reactionButton.style.height = '30px';
-    reactionButton.style.display = 'inline-flex';
-    reactionButton.style.alignItems = 'center';
-    reactionButton.style.justifyContent = 'center';
-    reactionButton.style.fontSize = '16px';
-    reactionButton.style.cursor = 'pointer';
-    reactionButton.style.transition = 'all 0.2s';
-    reactionButton.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-    reactionButton.style.zIndex = '1';
-
-    // Create a properly styled popup
-    const reactionPopup = document.createElement('div');
-    reactionPopup.className = 'reaction-popup hidden';
-    reactionPopup.style.position = 'absolute';
-    reactionPopup.style.backgroundColor = 'white';
-    reactionPopup.style.borderRadius = '24px';
-    reactionPopup.style.padding = '6px 10px';
-    reactionPopup.style.zIndex = '100';
-    reactionPopup.style.display = 'none';
-    reactionPopup.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15)';
-    reactionPopup.style.bottom = '100%';
-    reactionPopup.style.marginBottom = '8px';
-    reactionPopup.style.border = '1px solid rgba(0, 0, 0, 0.1)';
-    reactionPopup.style.flexDirection = 'row';
-    reactionPopup.style.justifyContent = 'center';
-    reactionPopup.style.width = 'auto';
-
-    // Position the popup based on message alignment
-    if (isSentByMe) {
-        reactionPopup.style.right = '0';
-        reactionPopup.style.left = 'auto';
-    } else {
-        reactionPopup.style.left = '0';
-        reactionPopup.style.right = 'auto';
-    }
-
-    // Create reaction buttons
-    const reactions = [
-        { type: 1, emoji: '👍' },
-        { type: 2, emoji: '❤️' },
-        { type: 3, emoji: '😂' },
-        { type: 4, emoji: '😮' },
-        { type: 5, emoji: '😢' }
-    ];
-
-    reactions.forEach(reaction => {
-        const btn = document.createElement('button');
-        btn.dataset.reaction = reaction.type;
-        btn.innerHTML = reaction.emoji;
-        btn.style.background = 'transparent';
-        btn.style.border = 'none';
-        btn.style.fontSize = '18px';
-        btn.style.padding = '6px';
-        btn.style.margin = '0 2px';
-        btn.style.cursor = 'pointer';
-        btn.style.borderRadius = '50%';
-        btn.style.width = '36px';
-        btn.style.height = '36px';
-        btn.style.display = 'flex';
-        btn.style.alignItems = 'center';
-        btn.style.justifyContent = 'center';
-
-        btn.onclick = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            const reactionType = this.dataset.reaction;
-            if (typeof window.sendReaction === 'function') {
-                window.sendReaction(message.id, reactionType);
-            }
-
-            reactionPopup.classList.add('hidden');
-            reactionPopup.style.display = 'none';
-        };
-
-        reactionPopup.appendChild(btn);
-    });
-
-    // Add click handler directly to the reaction button
-    reactionButton.onclick = function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        // Close all other popups
-        document.querySelectorAll('.reaction-popup').forEach(p => {
-            if (p !== reactionPopup) {
-                p.classList.add('hidden');
-                p.style.display = 'none';
-            }
-        });
-
-        // Toggle this popup
-        if (reactionPopup.classList.contains('hidden')) {
-            reactionPopup.classList.remove('hidden');
-            reactionPopup.style.display = 'flex';
-        } else {
-            reactionPopup.classList.add('hidden');
-            reactionPopup.style.display = 'none';
-        }
-    };
-
-    reactionContainer.appendChild(reactionButton);
-    reactionContainer.appendChild(reactionPopup);
-    messageDiv.appendChild(reactionContainer);
-
-    chatMessages.appendChild(messageDiv);
-
-    // Scroll to bottom
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-    // Send message
-    document.getElementById('message-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const messageInput = document.getElementById('message-input');
-        const message = messageInput.value.trim();
-
-        if (!message && !currentUploadedImageUrl) {
-            return;
+                })
+                .catch(error => console.error('Error loading suggested users:', error));
         }
 
-        const data = {
-            type: 'message',
-            chatroom_id: chatroomId,
-            sender: currentUser,
-            message: message,
-            image_url: currentUploadedImageUrl
-        };
-
-        socket.send(JSON.stringify(data));
-
-        // Clear inputs
-        messageInput.value = '';
-        clearImagePreview();
-
-        // Reset variables
-        currentUploadedImageUrl = null;
-    });
-
-    // Handle image upload
-    let currentUploadedImageUrl = null;
-
-    document.getElementById('upload-btn').addEventListener('click', function() {
-        document.getElementById('image-input').click();
-    });
-
-    document.getElementById('image-input').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        // Show preview
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('preview-img').src = e.target.result;
-            document.getElementById('image-preview').classList.remove('d-none');
-        };
-        reader.readAsDataURL(file);
-
-        // Upload the image
-        const formData = new FormData();
-        formData.append('image', file);
-        formData.append('csrfmiddlewaretoken', csrfToken);
-
-        fetch('/chat/upload-image/', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                currentUploadedImageUrl = data.image_url;
-            } else {
-                console.error('Error uploading image:', data.error);
-                clearImagePreview();
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            clearImagePreview();
-        });
-    });
-
-    document.getElementById('remove-image-btn').addEventListener('click', clearImagePreview);
-
-    function clearImagePreview() {
-        document.getElementById('image-preview').classList.add('d-none');
-        document.getElementById('preview-img').src = '';
-        document.getElementById('image-input').value = '';
-        currentUploadedImageUrl = null;
-    }
-
-    // Send reaction
-    window.sendReaction = function(messageId, reactionType) {
-        const formData = new FormData();
-        formData.append('reaction_type', reactionType);
-        formData.append('csrfmiddlewaretoken', csrfToken);
-
-        fetch(`/chatrooms/message/${messageId}/react/`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                updateMessageReaction(messageId, reactionType);
-
-                // Send via WebSocket for real-time updates
-                socket.send(JSON.stringify({
-                    'type': 'reaction',
-                    'message_id': messageId,
-                    'reaction_type': reactionType,
-                    'chatroom_id': chatroomId
-                }));
-            }
-        })
-        .catch(error => console.error('Error sending reaction:', error));
-    };
-
-    // Admin functions
-    // Add user search
-    if (isAdmin) {
-        const userSearchInput = document.getElementById('user-search');
-        userSearchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            if (query.length < 2) {
-                document.getElementById('search-results').innerHTML = '';
-                return;
-            }
-
-            fetch(`/chat/search-users/?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => {
-                    const searchResults = document.getElementById('search-results');
-                    searchResults.innerHTML = '';
-
-                    if (data.users.length === 0) {
-                        searchResults.innerHTML = '<div class="alert alert-info">No users found</div>';
+        function initializeAdminFeatures() {
+            if (isAdmin) {
+                const userSearchInput = document.getElementById('user-search');
+                userSearchInput.oninput = function () {
+                    const query = this.value.trim();
+                    if (query.length < 2) {
+                        document.getElementById('search-results').innerHTML = '';
                         return;
                     }
 
-                    const resultsList = document.createElement('div');
-                    resultsList.className = 'list-group';
-
-                    data.users.forEach(user => {
-                        const userItem = document.createElement('button');
-                        userItem.className = 'list-group-item list-group-item-action';
-                        userItem.textContent = user.username;
-                        userItem.addEventListener('click', function() {
-                            userSearchInput.value = user.username;
+                    fetch(`/chat/search-users/?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const searchResults = document.getElementById('search-results');
                             searchResults.innerHTML = '';
-                        });
 
-                        resultsList.appendChild(userItem);
-                    });
+                            if (data.users.length === 0) {
+                                searchResults.innerHTML = '<div class="alert alert-info">No users found</div>';
+                                return;
+                            }
 
-                    searchResults.appendChild(resultsList);
-                })
-                .catch(error => console.error('Error searching users:', error));
-        });
+                            const resultsList = document.createElement('div');
+                            resultsList.className = 'list-group';
 
-        document.getElementById('add-user-btn').addEventListener('click', function() {
-            const username = userSearchInput.value.trim();
-            if (!username) return;
+                            data.users.forEach(user => {
+                                const userItem = document.createElement('button');
+                                userItem.className = 'list-group-item list-group-item-action';
+                                userItem.textContent = user.username;
+                                userItem.onclick = () => {
+                                    userSearchInput.value = user.username;
+                                    searchResults.innerHTML = '';
+                                };
+                                resultsList.appendChild(userItem);
+                            });
 
-            addUserToChatroom(username);
-        });
-    } else {
-        // Non-admin: suggest user
-        const suggestSearchInput = document.getElementById('suggest-search');
-        suggestSearchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            if (query.length < 2) {
-                document.getElementById('suggest-results').innerHTML = '';
-                return;
-            }
+                            searchResults.appendChild(resultsList);
+                        })
+                        .catch(error => console.error('Error searching users:', error));
+                };
 
-            fetch(`/chat/search-users/?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => {
-                    const suggestResults = document.getElementById('suggest-results');
-                    suggestResults.innerHTML = '';
-
-                    if (data.users.length === 0) {
-                        suggestResults.innerHTML = '<div class="alert alert-info">No users found</div>';
+                document.getElementById('add-user-btn').onclick = () => {
+                    const username = userSearchInput.value.trim();
+                    if (username) addUserToChatroom(username);
+                };
+            } else {
+                const suggestSearchInput = document.getElementById('suggest-search');
+                suggestSearchInput.oninput = function () {
+                    const query = this.value.trim();
+                    if (query.length < 2) {
+                        document.getElementById('suggest-results').innerHTML = '';
                         return;
                     }
 
-                    const resultsList = document.createElement('div');
-                    resultsList.className = 'list-group';
-
-                    data.users.forEach(user => {
-                        const userItem = document.createElement('button');
-                        userItem.className = 'list-group-item list-group-item-action';
-                        userItem.textContent = user.username;
-                        userItem.addEventListener('click', function() {
-                            suggestSearchInput.value = user.username;
+                    fetch(`/chat/search-users/?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const suggestResults = document.getElementById('suggest-results');
                             suggestResults.innerHTML = '';
-                        });
 
-                        resultsList.appendChild(userItem);
-                    });
+                            if (data.users.length === 0) {
+                                suggestResults.innerHTML = '<div class="alert alert-info">No users found</div>';
+                                return;
+                            }
 
-                    suggestResults.appendChild(resultsList);
-                })
-                .catch(error => console.error('Error searching users:', error));
-        });
+                            const resultsList = document.createElement('div');
+                            resultsList.className = 'list-group';
 
-        document.getElementById('suggest-user-btn').addEventListener('click', function() {
-            const username = suggestSearchInput.value.trim();
-            if (!username) return;
+                            data.users.forEach(user => {
+                                const userItem = document.createElement('button');
+                                userItem.className = 'list-group-item list-group-item-action';
+                                userItem.textContent = user.username;
+                                userItem.onclick = () => {
+                                    suggestSearchInput.value = user.username;
+                                    suggestResults.innerHTML = '';
+                                };
+                                resultsList.appendChild(userItem);
+                            });
 
-            suggestUser(username);
-        });
-    }
+                            suggestResults.appendChild(resultsList);
+                        })
+                        .catch(error => console.error('Error searching users:', error));
+                };
 
-    // Leave chatroom
-    document.getElementById('leave-btn').addEventListener('click', function() {
-        if (confirm('Are you sure you want to leave this chatroom?')) {
-            leaveChatroom();
-        }
-    });
-
-    // Helper functions
-    function addUserToChatroom(username) {
-        const formData = new FormData();
-        formData.append('username', username);
-        formData.append('csrfmiddlewaretoken', csrfToken);
-
-        fetch(`/chatrooms/${chatroomId}/add-user/`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                document.getElementById('user-search').value = '';
-                loadUsers();
-            } else {
-                alert(data.error || 'An error occurred');
+                document.getElementById('suggest-user-btn').onclick = () => {
+                    const username = suggestSearchInput.value.trim();
+                    if (username) suggestUser(username);
+                };
             }
-        })
-        .catch(error => console.error('Error adding user:', error));
-    }
 
-    function suggestUser(username) {
-        const formData = new FormData();
-        formData.append('username', username);
-        formData.append('csrfmiddlewaretoken', csrfToken);
-
-        fetch(`/chatrooms/${chatroomId}/suggest-user/`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                document.getElementById('suggest-search').value = '';
-            } else {
-                alert(data.error || 'An error occurred');
-            }
-        })
-        .catch(error => console.error('Error suggesting user:', error));
-    }
-
-    function makeUserAdmin(username) {
-        if (!confirm(`Are you sure you want to make ${username} an admin?`)) {
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('username', username);
-        formData.append('csrfmiddlewaretoken', csrfToken);
-
-        fetch(`/chatrooms/${chatroomId}/grant-admin/`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                loadUsers();
-            } else {
-                alert(data.error || 'An error occurred');
-            }
-        })
-        .catch(error => console.error('Error making user admin:', error));
-    }
-
-    function removeUser(username) {
-        if (!confirm(`Are you sure you want to remove ${username} from the chatroom?`)) {
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('username', username);
-        formData.append('csrfmiddlewaretoken', csrfToken);
-
-        fetch(`/chatrooms/${chatroomId}/remove-user/`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                loadUsers();
-            } else {
-                alert(data.error || 'An error occurred');
-            }
-        })
-        .catch(error => console.error('Error removing user:', error));
-    }
-
-    function approveSuggestion(userId) {
-        const formData = new FormData();
-        formData.append('user_id', userId);
-        formData.append('csrfmiddlewaretoken', csrfToken);
-
-        fetch(`/chatrooms/${chatroomId}/approve-suggestion/`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                loadSuggestedUsers();
-                loadUsers();
-            } else {
-                alert(data.error || 'An error occurred');
-            }
-        })
-        .catch(error => console.error('Error approving suggestion:', error));
-    }
-
-    function deleteSuggestion(userId) {
-        const formData = new FormData();
-        formData.append('user_id', userId);
-        formData.append('csrfmiddlewaretoken', csrfToken);
-
-        fetch(`/chatrooms/${chatroomId}/delete-suggestion/`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                loadSuggestedUsers();
-            } else {
-                alert(data.error || 'An error occurred');
-            }
-        })
-        .catch(error => console.error('Error deleting suggestion:', error));
-    }
-
-    function leaveChatroom() {
-        fetch(`/chatrooms/${chatroomId}/leave/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrfToken,
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = '/chatrooms/';
-            } else {
-                alert(data.error || 'An error occurred');
-            }
-        })
-        .catch(error => console.error('Error leaving chatroom:', error));
-    }
-    document.addEventListener('DOMContentLoaded', function() {
-    // Event delegation for reaction buttons
-    document.body.addEventListener('click', function(event) {
-        // Handle reaction button clicks
-        if (event.target.closest('.reaction-button')) {
-            const button = event.target.closest('.reaction-button');
-            const popup = button.nextElementSibling;
-
-            // Close all other popups first
-            document.querySelectorAll('.reaction-popup').forEach(p => {
-                if (p !== popup) {
-                    p.classList.add('hidden');
+            document.getElementById('leave-btn').onclick = () => {
+                if (confirm('Are you sure you want to leave this chatroom?')) {
+                    leaveChatroom();
                 }
-            });
+            };
+        }
 
-            // Toggle the clicked popup
-            if (popup && popup.classList.contains('reaction-popup')) {
-                popup.classList.toggle('hidden');
+        // Utility functions
+        function addUserToChatroom(username) {
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('csrfmiddlewaretoken', csrfToken);
 
-                // Position the popup correctly based on message alignment
-                const messageContainer = button.closest('.message');
-                if (messageContainer) {
-                    if (messageContainer.classList.contains('message-received')) {
-                        popup.style.left = '0';
-                        popup.style.right = 'auto';
-                    } else {
-                        popup.style.right = '0';
-                        popup.style.left = 'auto';
+            fetch(`/chatrooms/${chatroomId}/add-user/`, {method: 'POST', body: formData})
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.success ? data.message : data.error || 'An error occurred');
+                    if (data.success) {
+                        document.getElementById('user-search').value = '';
+                        loadUsers();
                     }
-                }
-            }
-
-            event.stopPropagation();
-            return;
+                })
+                .catch(error => console.error('Error adding user:', error));
         }
 
-        // Close popups when clicking elsewhere
-        document.querySelectorAll('.reaction-popup').forEach(popup => {
-            popup.classList.add('hidden');
-        });
-    });
-});
-    document.addEventListener('DOMContentLoaded', function() {
-    // Global click handler for closing popups when clicking elsewhere
-    document.body.addEventListener('click', function(e) {
-        if (!e.target.closest('.reaction-button') && !e.target.closest('.reaction-popup')) {
-            document.querySelectorAll('.reaction-popup').forEach(popup => {
-                popup.classList.add('hidden');
-                popup.style.display = 'none';
-            });
+        function suggestUser(username) {
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch(`/chatrooms/${chatroomId}/suggest-user/`, {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message || 'User suggested successfully');
+                        document.getElementById('suggest-search').value = '';
+                        document.getElementById('suggest-results').innerHTML = '';
+                    } else {
+                        alert(data.error || 'Error suggesting user');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error suggesting user:', error);
+                    alert('Error suggesting user: ' + error.message);
+                });
         }
-    });
-});
-</script>
+
+        function makeUserAdmin(username) {
+            if (!confirm(`Make ${username} an admin?`)) return;
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch(`/chatrooms/${chatroomId}/grant-admin/`, {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message || 'Admin privileges granted');
+                        loadUsers(); // Reload user list
+                    } else {
+                        alert(data.error || 'Error granting admin privileges');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error making admin:', error);
+                    alert('Error making admin: ' + error.message);
+                });
+        }
+
+        function removeUser(username) {
+            if (!confirm(`Remove ${username} from chatroom?`)) return;
+
+            const formData = new FormData();
+            formData.append('username', username);
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch(`/chatrooms/${chatroomId}/remove-user/`, {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message || 'User removed successfully');
+                        loadUsers(); // Reload user list
+                    } else {
+                        alert(data.error || 'Error removing user');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error removing user:', error);
+                    alert('Error removing user: ' + error.message);
+                });
+        }
+
+        function approveSuggestion(userId) {
+            const formData = new FormData();
+            formData.append('user_id', userId);
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch(`/chatrooms/${chatroomId}/approve-suggestion/`, {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message || 'Suggestion approved');
+                        loadSuggestedUsers();
+                        loadUsers();
+                    } else {
+                        alert(data.error || 'Error approving suggestion');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error approving suggestion:', error);
+                    alert('Error approving suggestion: ' + error.message);
+                });
+        }
+
+        function deleteSuggestion(userId) {
+            const formData = new FormData();
+            formData.append('user_id', userId);
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch(`/chatrooms/${chatroomId}/delete-suggestion/`, {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message || 'Suggestion deleted');
+                        loadSuggestedUsers();
+                    } else {
+                        alert(data.error || 'Error deleting suggestion');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting suggestion:', error);
+                    alert('Error deleting suggestion: ' + error.message);
+                });
+        }
+
+        function leaveChatroom() {
+            if (!confirm('Are you sure you want to leave this chatroom?')) return;
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch(`/chatrooms/${chatroomId}/leave/`, {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Left chatroom successfully');
+                        window.location.href = '/chatrooms/';
+                    } else {
+                        alert(data.error || 'Error leaving chatroom');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error leaving chatroom:', error);
+                    alert('Error leaving chatroom: ' + error.message);
+                });
+        }
+
+    </script>
 {% endblock %}
