@@ -10,7 +10,6 @@ A real-time chat application built with Django Channels, featuring private messa
 - ⚡ Real-time messaging with WebSockets
 - 😊 Message reactions
 - 📷 Image sharing
-- 🌙 Dark mode support
 - 📱 Responsive design
 
 ## Architecture
