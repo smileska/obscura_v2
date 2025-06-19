@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: django-service
+  name: backend-service
   namespace: obscura-messenger
   labels:
-    app: django-app
+    app: backend-app
 spec:
   ports:
-  - port: 80
-    targetPort: 80
+  - port: 8000
+    targetPort: 8000
     protocol: TCP
-    name: http
+    name: django
   selector:
-    app: django-app
+    app: backend-app
   type: ClusterIP

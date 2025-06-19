@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: static-pvc
+  namespace: obscura-messenger
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-app
+  namespace: obscura-messenger
+  labels:
+    app: backend-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend-app
+  template:
+    metadata:
+      labels:
+        app: backend-app
+    spec:
+      initContainers:
+      - name: setup
+        image: smileska/obscura-messenger:latest
+        command: ["sh", "-c"]
+        args:
+          - |
+            mkdir -p /app/media/chat_images /app/media/chatroom_images /app/media/profile_pics
+            python manage.py migrate
+            python manage.py collectstatic --noinput
+        env:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: django-secrets
+              key: SECRET_KEY
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: django-secrets
+              key: DATABASE_USER
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: django-secrets
+              key: DATABASE_PASSWORD
+        envFrom:
+        - configMapRef:
+            name: django-config
+        volumeMounts:
+        - name: media-storage
+          mountPath: /app/media
+        - name: static-storage
+          mountPath: /app/staticfiles
+      containers:
+      - name: django-app
+        image: smileska/obscura-messenger:latest
+        ports:
+        - containerPort: 8000
+          name: django
+        env:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: django-secrets
+              key: SECRET_KEY
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: django-secrets
+              key: DATABASE_USER
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: django-secrets
+              key: DATABASE_PASSWORD
+        envFrom:
+        - configMapRef:
+            name: django-config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: media-storage
+          mountPath: /app/media
+        - name: static-storage
+          mountPath: /app/staticfiles
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 5
+      volumes:
+      - name: media-storage
+        persistentVolumeClaim:
+          claimName: media-pvc
+      - name: static-storage
+        persistentVolumeClaim:
+          claimName: static-pvc
