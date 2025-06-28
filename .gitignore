@@ -66,3 +66,4 @@ coverage.xml
 *.cover
 .pytest_cache/
 .tox/
+k8s/secrets.yml
