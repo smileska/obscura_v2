@@ -4,7 +4,7 @@ metadata:
   name: django-config
   namespace: obscura-messenger
 data:
-  DEBUG: "False"
+  DEBUG: "True"
   DJANGO_SETTINGS_MODULE: "docker_settings"
   ALLOWED_HOSTS: "localhost,127.0.0.1,obscura-messenger.local,backend-service,10.1.0.12,10.100.92.252,*"
   DATABASE_HOST: "postgres-service"

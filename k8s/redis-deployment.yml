@@ -1,12 +1,13 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: redis
   namespace: obscura-messenger
   labels:
     app: redis
 spec:
-  replicas: 1
+  serviceName: redis-service
+  replicas: 3
   selector:
     matchLabels:
       app: redis
@@ -45,23 +46,11 @@ spec:
         volumeMounts:
         - name: redis-storage
           mountPath: /data
-      volumes:
-      - name: redis-storage
-        emptyDir: {}
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: redis-service
-  namespace: obscura-messenger
-  labels:
-    app: redis
-spec:
-  ports:
-  - port: 6379
-    targetPort: 6379
-    name: redis
-  selector:
-    app: redis
-  type: ClusterIP
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi
