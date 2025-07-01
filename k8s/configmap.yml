@@ -1,3 +1,4 @@
+# configmap-updated.yml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -7,10 +8,10 @@ data:
   DEBUG: "True"
   DJANGO_SETTINGS_MODULE: "docker_settings"
   ALLOWED_HOSTS: "localhost,127.0.0.1,obscura-messenger.local,backend-service,10.1.0.12,10.100.92.252,*"
-  DATABASE_HOST: "postgres-service"
+  DATABASE_HOST: "postgres-master-service"
   DATABASE_PORT: "5432"
   DATABASE_NAME: "obscura_db"
-  REDIS_URL: "redis://redis-service:6379/0"
+  REDIS_URL: "redis://redis-service.obscura-messenger.svc.cluster.local:6379/0"
   EMAIL_BACKEND: "django.core.mail.backends.console.EmailBackend"
   DEFAULT_FROM_EMAIL: "noreply@obscura-messenger.local"
   SECURE_SSL_REDIRECT: "False"
@@ -18,3 +19,5 @@ data:
   CSRF_COOKIE_SECURE: "False"
   MEDIA_URL: "/media/"
   MEDIA_ROOT: "/app/media"
+  DB_CONNECTION_MAX_AGE: "0"
+  DB_AUTOCOMMIT: "True"

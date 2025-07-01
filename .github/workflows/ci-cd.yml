@@ -76,7 +76,7 @@ jobs:
         DATABASE_PORT: 5432
         REDIS_URL: redis://localhost:6379/0
         DJANGO_SETTINGS_MODULE: obscura.settings
-        ALLOWED_HOSTS: localhost,127.0.0.1,134.112.1.124
+        ALLOWED_HOSTS: localhost,127.0.0.1,74.248.72.117
       run: |
         python manage.py collectstatic --noinput
         python manage.py migrate
@@ -130,6 +130,72 @@ jobs:
 
     - name: Image digest
       run: echo "Image pushed with digest ${{ steps.build.outputs.digest }}"
+
+  deploy-to-aks:
+    name: deploy-to-aks
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+
+    - name: Configure kubeconfig
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+
+    - name: Ensure target namespace exists
+      run: |
+        kubectl get ns obscura-messenger || kubectl create namespace obscura-messenger
+
+    - name: Update ConfigMap with new image
+      run: |
+        # Update the backend image in configmap if needed
+        kubectl patch configmap django-config -n obscura-messenger --type merge -p '{
+          "data": {
+            "ALLOWED_HOSTS": "localhost,127.0.0.1,74.248.72.117,obscura-messenger.local,backend-service,*"
+          }
+        }' || echo "ConfigMap not found, will be created with manifests"
+
+    - name: Deploy manifests
+      run: |
+        # Apply all Kubernetes manifests
+        kubectl apply -n obscura-messenger -f k8s/
+
+    - name: Update backend deployment image
+      run: |
+        kubectl set image deployment/backend-app django-app=${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest -n obscura-messenger
+
+    - name: Verify rollout
+      run: |
+        kubectl rollout status deployment/backend-app -n obscura-messenger --timeout=300s
+        kubectl rollout status deployment/frontend-app -n obscura-messenger --timeout=120s
+
+    - name: Get service info
+      run: |
+        echo "============================================"
+        echo "Deployment successful!"
+        echo "Getting service information..."
+        kubectl get svc -n obscura-messenger
+        echo "============================================"
+        echo "Pods status:"
+        kubectl get pods -n obscura-messenger
+        echo "============================================"
+
+    - name: Get external IP
+      run: |
+        EXTERNAL_IP=$(kubectl get svc frontend-service -n obscura-messenger -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "Pending")
+        echo "External IP: $EXTERNAL_IP"
+        echo "Internal access: http://obscura-messenger.local"
+        echo "============================================"
 
   security-scan:
     needs: build-and-push

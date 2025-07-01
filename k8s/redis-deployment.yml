@@ -7,7 +7,7 @@ metadata:
     app: redis
 spec:
   serviceName: redis-service
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: redis
@@ -46,6 +46,16 @@ spec:
         volumeMounts:
         - name: redis-storage
           mountPath: /data
+        command:
+          - redis-server
+          - --appendonly
+          - "yes"
+          - --save
+          - "900 1"
+          - --save
+          - "300 10"
+          - --save
+          - "60 10000"
   volumeClaimTemplates:
   - metadata:
       name: redis-storage
@@ -54,3 +64,20 @@ spec:
       resources:
         requests:
           storage: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: obscura-messenger
+  labels:
+    app: redis
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+    name: redis
+  selector:
+    app: redis
+  type: ClusterIP

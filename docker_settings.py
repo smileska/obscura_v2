@@ -88,7 +88,9 @@ DATABASES = {
         'PORT': config('DATABASE_PORT', cast=int),
         'OPTIONS': {
             'connect_timeout': 60,
-        }
+        },
+        'CONN_MAX_AGE': 0,
+        'AUTOCOMMIT': True,
     }
 }
 
@@ -200,6 +202,11 @@ LOGGING = {
         'level': 'INFO',
     },
     'loggers': {
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
         'django': {
             'handlers': ['console'],
             'level': 'INFO',
@@ -210,5 +217,12 @@ LOGGING = {
             'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
+        'accounts': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
     },
 }
+if not DEBUG:
+    DATABASES['default']['ATOMIC_REQUESTS'] = True

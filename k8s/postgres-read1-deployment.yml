@@ -1,20 +1,19 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
-  name: postgres
+  name: postgres-read1
   namespace: obscura-messenger
   labels:
-    app: postgres
+    app: postgres-read1
 spec:
-  serviceName: postgres-service
   replicas: 1
   selector:
     matchLabels:
-      app: postgres
+      app: postgres-read1
   template:
     metadata:
       labels:
-        app: postgres
+        app: postgres-read1
     spec:
       containers:
       - name: postgres
@@ -66,28 +65,24 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
-  volumeClaimTemplates:
-  - metadata:
-      name: postgres-storage
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      resources:
-        requests:
-          storage: 1Gi
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-slave1-pvc
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres-service
+  name: postgres-read1-service
   namespace: obscura-messenger
   labels:
-    app: postgres
+    app: postgres-read1
 spec:
   ports:
   - port: 5432
     targetPort: 5432
     name: postgres
   selector:
-    app: postgres
+    app: postgres-read1
   type: ClusterIP
