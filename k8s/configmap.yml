@@ -7,7 +7,7 @@ metadata:
 data:
   DEBUG: "True"
   DJANGO_SETTINGS_MODULE: "docker_settings"
-  ALLOWED_HOSTS: "localhost,127.0.0.1,obscura-messenger.local,backend-service,10.1.0.12,10.100.92.252,*"
+  ALLOWED_HOSTS: "localhost,127.0.0.1,obscura-messenger.local,backend-service,74.248.75.107,*"
   DATABASE_HOST: "postgres-master-service"
   DATABASE_PORT: "5432"
   DATABASE_NAME: "obscura_db"
