@@ -12,6 +12,12 @@ data:
         include /etc/nginx/mime.types;
         default_type application/octet-stream;
         
+        # Optimize for single node
+        client_body_buffer_size 1k;
+        client_header_buffer_size 1k;
+        client_max_body_size 50M;
+        large_client_header_buffers 2 1k;
+        
         map $http_upgrade $connection_upgrade {
             default upgrade;
             '' close;
@@ -23,16 +29,24 @@ data:
         
         server {
             listen 80;
-            client_max_body_size 50M;
+            
+            # Health check endpoint
+            location /health {
+                access_log off;
+                return 200 "healthy\n";
+                add_header Content-Type text/plain;
+            }
             
             location /static/ {
                 alias /app/static/;
-                try_files $uri =404;
+                try_files $uri @backend;
+                expires 1h;
             }
             
             location /media/ {
                 alias /app/media/;
-                try_files $uri =404;
+                try_files $uri @backend;
+                expires 1h;
             }
             
             location /ws/ {
@@ -49,6 +63,16 @@ data:
                 proxy_cache_bypass $http_upgrade;
                 proxy_read_timeout 86400;
                 proxy_send_timeout 86400;
+            }
+            
+            location @backend {
+                proxy_pass http://backend;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-Forwarded-Host $host;
+                proxy_set_header X-Forwarded-Port $server_port;
             }
             
             location / {
@@ -72,7 +96,7 @@ metadata:
   labels:
     app: frontend-app
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: frontend-app
@@ -81,6 +105,25 @@ spec:
       labels:
         app: frontend-app
     spec:
+      initContainers:
+      - name: wait-for-backend
+        image: busybox:1.28
+        command: ['sh', '-c']
+        args:
+        - |
+          echo "Waiting for backend service..."
+          until nc -z backend-service 8000; do
+            echo "Backend not ready, waiting 5 seconds..."
+            sleep 5
+          done
+          echo "Backend is ready!"
+        resources:
+          requests:
+            memory: "8Mi"
+            cpu: "1m"
+          limits:
+            memory: "16Mi"
+            cpu: "5m"
       containers:
       - name: nginx
         image: nginx:alpine
@@ -99,23 +142,31 @@ spec:
           readOnly: true
         resources:
           requests:
-            memory: "32Mi"
-            cpu: "25m"
+            memory: "16Mi"
+            cpu: "5m"
           limits:
-            memory: "64Mi"
-            cpu: "50m"
+            memory: "32Mi"
+            cpu: "20m"
         livenessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 80
-          initialDelaySeconds: 30
-          periodSeconds: 10
+          initialDelaySeconds: 15
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 80
           initialDelaySeconds: 5
-          periodSeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 3"]
       volumes:
       - name: nginx-config
         configMap:

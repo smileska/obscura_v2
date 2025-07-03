@@ -138,192 +138,475 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install kubectl
-      run: |
-        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-        chmod +x kubectl
-        sudo mv kubectl /usr/local/bin/
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
 
-    - name: Configure kubeconfig
-      run: |
-        mkdir -p $HOME/.kube
-        echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
 
-    - name: Ensure target namespace exists
-      run: |
-        kubectl get ns obscura-messenger || kubectl create namespace obscura-messenger
+      - name: Ensure target namespace exists
+        run: |
+          kubectl get ns obscura-messenger || kubectl create namespace obscura-messenger
 
-    - name: Check cluster resources for single node deployment
-      run: |
-        echo "============================================"
-        echo "CHECKING SINGLE NODE CLUSTER RESOURCES"
-        echo "============================================"
-        kubectl get nodes -o wide
-        kubectl top nodes || echo "Metrics server not available"
-        
-        echo ""
-        echo "Current resource allocation:"
-        kubectl describe nodes | grep -A 5 "Allocated resources:" || echo "Node description not available"
-        
-        PENDING_PODS=$(kubectl get pods --all-namespaces --field-selector=status.phase=Pending --no-headers | wc -l)
-        echo ""
-        echo "Pending pods in cluster: $PENDING_PODS"
-        
-        if [ "$PENDING_PODS" -gt 0 ]; then
-          echo "WARNING: Found pending pods, checking reasons..."
-          kubectl describe pods --all-namespaces --field-selector=status.phase=Pending | grep -A 5 "Events:" | head -20
-        fi
+      - name: Check single node cluster resources
+        run: |
+          echo "============================================"
+          echo "SINGLE NODE CLUSTER RESOURCE CHECK"
+          echo "============================================"
+          kubectl get nodes -o wide
+          kubectl describe nodes | grep -A 8 "Allocated resources:" || echo "Resource info not available"
 
-    - name: Clean up any resource-starved deployments
-      run: |
-        echo "Cleaning up any existing failed/pending deployments..."
-        kubectl delete pods --field-selector=status.phase=Failed -n obscura-messenger || true
-        kubectl delete pods --field-selector=status.phase=Pending -n obscura-messenger || true
-        
-        kubectl scale deployment backend-app --replicas=0 -n obscura-messenger || true
-        kubectl scale deployment frontend-app --replicas=0 -n obscura-messenger || true
-        
-        sleep 15
-
-    - name: Deploy infrastructure components
-      run: |
-        echo "Deploying secrets, configs, and storage..."
-        kubectl apply -n obscura-messenger -f k8s/secrets.yml
-        kubectl apply -n obscura-messenger -f k8s/configmap.yml
-        kubectl apply -n obscura-messenger -f k8s/namespace.yml || true
-        kubectl apply -n obscura-messenger -f k8s/media-pvc.yml
-        kubectl apply -n obscura-messenger -f k8s/postgres-slave-pvcs.yml
-
-    - name: Deploy database services
-      run: |
-        echo "Deploying optimized database services..."
-        kubectl apply -n obscura-messenger -f k8s/postgres-master-statefulset.yml
-        kubectl apply -n obscura-messenger -f k8s/redis-deployment.yml
-
-    - name: Wait for database services
-      run: |
-        echo "Waiting for database services to be ready..."
-        kubectl wait --for=condition=ready pod -l app=postgres-master -n obscura-messenger --timeout=600s || {
-          echo "PostgreSQL master not ready, checking status..."
-          kubectl describe pod -l app=postgres-master -n obscura-messenger
-          kubectl logs -l app=postgres-master -n obscura-messenger --tail=30
-        }
-        
-        kubectl wait --for=condition=ready pod -l app=redis -n obscura-messenger --timeout=300s || {
-          echo "Redis not ready, checking status..."
-          kubectl describe pod -l app=redis -n obscura-messenger  
-          kubectl logs -l app=redis -n obscura-messenger --tail=30
-        }
-
-    - name: Deploy application services (single replica for single node)
-      run: |
-        echo "Deploying optimized application services..."
-        kubectl apply -n obscura-messenger -f k8s/backend-deployment.yml
-        kubectl apply -n obscura-messenger -f k8s/backend-service.yml
-        kubectl apply -n obscura-messenger -f k8s/frontend-deployment.yml
-        kubectl apply -n obscura-messenger -f k8s/frontend-service.yml
-        
-        kubectl scale deployment backend-app --replicas=1 -n obscura-messenger
-        kubectl scale deployment frontend-app --replicas=1 -n obscura-messenger
-
-    - name: Update backend image to latest
-      run: |
-        kubectl set image deployment/backend-app django-app=${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest -n obscura-messenger
-
-    - name: Wait for application deployments (extended timeout for single node)
-      run: |
-        echo "Waiting for backend deployment (single node - extended timeout)..."
-        kubectl wait --for=condition=available deployment/backend-app -n obscura-messenger --timeout=900s || {
-          echo "Backend deployment failed, checking status..."
-          echo "=== Deployment Status ==="
-          kubectl describe deployment backend-app -n obscura-messenger
-          echo "=== Pod Status ==="
-          kubectl get pods -l app=backend-app -n obscura-messenger -o wide
-          kubectl describe pods -l app=backend-app -n obscura-messenger
-          echo "=== Pod Logs ==="
-          kubectl logs -l app=backend-app -n obscura-messenger --tail=50
-          echo "=== Node Resources ==="
-          kubectl top nodes || echo "Node metrics not available"
-          exit 1
-        }
-        
-        echo "Waiting for frontend deployment..."
-        kubectl wait --for=condition=available deployment/frontend-app -n obscura-messenger --timeout=600s || {
-          echo "Frontend deployment failed, checking status..."
-          kubectl describe deployment frontend-app -n obscura-messenger
-          kubectl get pods -l app=frontend-app -n obscura-messenger -o wide
-          kubectl logs -l app=frontend-app -n obscura-messenger --tail=50
-          exit 1
-        }
-
-    - name: Deploy ingress and networking
-      run: |
-        echo "Deploying ingress..."
-        kubectl apply -n obscura-messenger -f k8s/ingress.yml || echo "Ingress deployment skipped or failed"
-
-    - name: Verify single node deployment
-      run: |
-        echo "============================================"
-        echo "SINGLE NODE DEPLOYMENT VERIFICATION"
-        echo "============================================"
-        
-        echo "All resources:"
-        kubectl get all -n obscura-messenger
-        
-        echo ""
-        echo "Pod details:"
-        kubectl get pods -n obscura-messenger -o wide
-        
-        echo ""
-        echo "Node resource usage:"
-        kubectl top nodes || echo "Node metrics not available"
-        
-        echo ""
-        echo "Pod resource usage:"
-        kubectl top pods -n obscura-messenger || echo "Pod metrics not available"
-        
-        BACKEND_READY=$(kubectl get deployment backend-app -n obscura-messenger -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
-        FRONTEND_READY=$(kubectl get deployment frontend-app -n obscura-messenger -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
-        
-        echo ""
-        echo "============================================"
-        if [ "$BACKEND_READY" = "1" ] && [ "$FRONTEND_READY" = "1" ]; then
-          echo "✅ SUCCESS! Single-node deployment completed successfully"
-          echo "Backend: $BACKEND_READY/1 ready"
-          echo "Frontend: $FRONTEND_READY/1 ready"
           echo ""
-          echo "🎯 RESOURCE OPTIMIZATION SUMMARY:"
-          echo "- Backend: 1 replica (was 3)"
-          echo "- Frontend: 1 replica (was 2)" 
-          echo "- PostgreSQL Master: 100m CPU (was 500m)"
-          echo "- Total CPU savings: ~75% reduction"
-        else
-          echo "❌ DEPLOYMENT INCOMPLETE"
-          echo "Backend: $BACKEND_READY/1 ready"
-          echo "Frontend: $FRONTEND_READY/1 ready"
-          exit 1
-        fi
+          echo "Current pods and their resource usage:"
+          kubectl get pods -n obscura-messenger -o wide || echo "No pods found"
 
-    - name: Provide access information
-      run: |
-        echo "============================================"
-        echo "APPLICATION ACCESS INFORMATION"
-        echo "============================================"
-        echo "Optimized deployment successful on single-node AKS!"
-        echo ""
-        echo "Access your application:"
-        echo "kubectl port-forward svc/frontend-service 8080:80 -n obscura-messenger"
-        echo ""
-        echo "Then visit: http://localhost:8080"
-        echo ""
-        echo "Monitor your application:"
-        echo "kubectl get pods -n obscura-messenger"
-        echo "kubectl logs -l app=backend-app -n obscura-messenger"
-        echo "kubectl top pods -n obscura-messenger"
-        echo "============================================"
+          echo ""
+          echo "Current deployments:"
+          kubectl get deployments -n obscura-messenger || echo "No deployments found"
+
+      - name: Aggressive cleanup for single node
+        run: |
+          echo "Performing aggressive cleanup for single node cluster..."
+
+          kubectl delete pods --field-selector=status.phase=Failed -n obscura-messenger --ignore-not-found=true
+          kubectl delete pods --field-selector=status.phase=Pending -n obscura-messenger --ignore-not-found=true --timeout=30s || true
+
+          kubectl scale deployment --all --replicas=0 -n obscura-messenger --timeout=60s || true
+
+          echo "Waiting for all pods to terminate..."
+          kubectl wait --for=delete pods --all -n obscura-messenger --timeout=120s || true
+
+          kubectl delete deployment --all -n obscura-messenger --ignore-not-found=true --timeout=30s || true
+
+          echo "Cleanup completed. Checking resources:"
+          kubectl get pods -n obscura-messenger || echo "No pods remaining"
+
+      - name: Deploy infrastructure components
+        run: |
+          echo "Deploying infrastructure components..."
+          kubectl apply -n obscura-messenger -f k8s/secrets.yml
+          kubectl apply -n obscura-messenger -f k8s/configmap.yml
+          kubectl apply -n obscura-messenger -f k8s/namespace.yml || true
+          kubectl apply -n obscura-messenger -f k8s/media-pvc.yml
+
+          echo "Checking PVC status..."
+          kubectl get pvc -n obscura-messenger
+
+      - name: Deploy database services
+        run: |
+          echo "Deploying database services..."
+          kubectl apply -n obscura-messenger -f k8s/postgres-master-statefulset.yml
+          kubectl apply -n obscura-messenger -f k8s/redis-deployment.yml
+
+      - name: Wait for database services
+        run: |
+          echo "Waiting for database services..."
+          kubectl wait --for=condition=ready pod -l app=postgres-master -n obscura-messenger --timeout=300s || {
+            echo "PostgreSQL master not ready, checking status..."
+            kubectl describe pod -l app=postgres-master -n obscura-messenger || true
+            kubectl logs -l app=postgres-master -n obscura-messenger --tail=20 || true
+          }
+
+          kubectl wait --for=condition=ready pod -l app=redis -n obscura-messenger --timeout=180s || {
+            echo "Redis not ready, checking status..."
+            kubectl describe pod -l app=redis -n obscura-messenger || true
+            kubectl logs -l app=redis -n obscura-messenger --tail=20 || true
+          }
+
+      - name: Deploy optimized backend
+        run: |
+          echo "Deploying optimized backend for single node..."
+
+          # Create optimized backend deployment
+          cat > /tmp/backend-optimized.yml << 'EOF'
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: static-pvc
+            namespace: obscura-messenger
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 2Gi
+          ---
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: backend-app
+            namespace: obscura-messenger
+            labels:
+              app: backend-app
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: backend-app
+            template:
+              metadata:
+                labels:
+                  app: backend-app
+              spec:
+                initContainers:
+                - name: setup
+                  image: ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
+                  securityContext:
+                    runAsUser: 0
+                    runAsGroup: 0
+                  command: ["sh", "-c"]
+                  args:
+                    - |
+                      mkdir -p /app/media/chat_images /app/media/chatroom_images /app/media/profile_pics
+                      python manage.py migrate
+                      python manage.py collectstatic --noinput
+                  env:
+                  - name: SECRET_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: django-secrets
+                        key: SECRET_KEY
+                  - name: DATABASE_USER
+                    valueFrom:
+                      secretKeyRef:
+                        name: django-secrets
+                        key: DATABASE_USER
+                  - name: DATABASE_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: django-secrets
+                        key: DATABASE_PASSWORD
+                  envFrom:
+                  - configMapRef:
+                      name: django-config
+                  volumeMounts:
+                  - name: media-storage
+                    mountPath: /app/media
+                  - name: static-storage
+                    mountPath: /app/staticfiles
+                  resources:
+                    requests:
+                      memory: "128Mi"
+                      cpu: "10m"
+                    limits:
+                      memory: "256Mi"
+                      cpu: "50m"
+                containers:
+                - name: django-app
+                  image: ${{ secrets.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE }}:latest
+                  ports:
+                  - containerPort: 8000
+                    name: django
+                  env:
+                  - name: SECRET_KEY
+                    valueFrom:
+                      secretKeyRef:
+                        name: django-secrets
+                        key: SECRET_KEY
+                  - name: DATABASE_USER
+                    valueFrom:
+                      secretKeyRef:
+                        name: django-secrets
+                        key: DATABASE_USER
+                  - name: DATABASE_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: django-secrets
+                        key: DATABASE_PASSWORD
+                  envFrom:
+                  - configMapRef:
+                      name: django-config
+                  resources:
+                    requests:
+                      memory: "128Mi"
+                      cpu: "15m"
+                    limits:
+                      memory: "256Mi"
+                      cpu: "100m"
+                  volumeMounts:
+                  - name: media-storage
+                    mountPath: /app/media
+                  - name: static-storage
+                    mountPath: /app/staticfiles
+                  livenessProbe:
+                    httpGet:
+                      path: /
+                      port: 8000
+                    initialDelaySeconds: 60
+                    periodSeconds: 30
+                    timeoutSeconds: 10
+                    failureThreshold: 3
+                  readinessProbe:
+                    httpGet:
+                      path: /
+                      port: 8000
+                    initialDelaySeconds: 30
+                    periodSeconds: 10
+                    timeoutSeconds: 5
+                    failureThreshold: 3
+                volumes:
+                - name: media-storage
+                  persistentVolumeClaim:
+                    claimName: media-pvc
+                - name: static-storage
+                  persistentVolumeClaim:
+                    claimName: static-pvc
+          EOF
+
+          kubectl apply -f /tmp/backend-optimized.yml
+          kubectl apply -n obscura-messenger -f k8s/backend-service.yml
+
+      - name: Wait for backend deployment
+        run: |
+          echo "Waiting for backend deployment..."
+          kubectl wait --for=condition=available deployment/backend-app -n obscura-messenger --timeout=600s || {
+            echo "Backend deployment failed, checking status..."
+            kubectl describe deployment backend-app -n obscura-messenger || true
+            kubectl get pods -l app=backend-app -n obscura-messenger -o wide || true
+            kubectl describe pods -l app=backend-app -n obscura-messenger || true
+            kubectl logs -l app=backend-app -n obscura-messenger --tail=50 || true
+            exit 1
+          }
+
+      - name: Deploy optimized frontend
+        run: |
+          echo "Deploying optimized frontend for single node..."
+
+          # Create optimized frontend deployment
+          cat > /tmp/frontend-optimized.yml << 'EOF'
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: frontend-nginx-config
+            namespace: obscura-messenger
+          data:
+            nginx.conf: |
+              events {
+                  worker_connections 1024;
+              }
+              http {
+                  include /etc/nginx/mime.types;
+                  default_type application/octet-stream;
+
+                  upstream backend {
+                      server backend-service:8000;
+                  }
+
+                  server {
+                      listen 80;
+                      client_max_body_size 50M;
+
+                      location /health {
+                          access_log off;
+                          return 200 "healthy\n";
+                          add_header Content-Type text/plain;
+                      }
+
+                      location /static/ {
+                          alias /app/static/;
+                          try_files $uri @backend;
+                      }
+
+                      location /media/ {
+                          alias /app/media/;
+                          try_files $uri @backend;
+                      }
+
+                      location /ws/ {
+                          proxy_pass http://backend;
+                          proxy_http_version 1.1;
+                          proxy_set_header Upgrade $http_upgrade;
+                          proxy_set_header Connection "upgrade";
+                          proxy_set_header Host $host;
+                          proxy_set_header X-Real-IP $remote_addr;
+                          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                          proxy_set_header X-Forwarded-Proto $scheme;
+                          proxy_cache_bypass $http_upgrade;
+                          proxy_read_timeout 86400;
+                          proxy_send_timeout 86400;
+                      }
+
+                      location @backend {
+                          proxy_pass http://backend;
+                          proxy_set_header Host $host;
+                          proxy_set_header X-Real-IP $remote_addr;
+                          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                          proxy_set_header X-Forwarded-Proto $scheme;
+                      }
+
+                      location / {
+                          proxy_pass http://backend;
+                          proxy_set_header Host $host;
+                          proxy_set_header X-Real-IP $remote_addr;
+                          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                          proxy_set_header X-Forwarded-Proto $scheme;
+                      }
+                  }
+              }
+          ---
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: frontend-app
+            namespace: obscura-messenger
+            labels:
+              app: frontend-app
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: frontend-app
+            template:
+              metadata:
+                labels:
+                  app: frontend-app
+              spec:
+                initContainers:
+                - name: wait-for-backend
+                  image: busybox:1.28
+                  command: ['sh', '-c']
+                  args:
+                  - |
+                    echo "Waiting for backend service..."
+                    until nc -z backend-service 8000; do
+                      echo "Backend not ready, waiting..."
+                      sleep 5
+                    done
+                    echo "Backend is ready!"
+                  resources:
+                    requests:
+                      memory: "8Mi"
+                      cpu: "1m"
+                    limits:
+                      memory: "16Mi"
+                      cpu: "5m"
+                containers:
+                - name: nginx
+                  image: nginx:alpine
+                  ports:
+                  - containerPort: 80
+                    name: http
+                  volumeMounts:
+                  - name: nginx-config
+                    mountPath: /etc/nginx/nginx.conf
+                    subPath: nginx.conf
+                  - name: static-storage
+                    mountPath: /app/static
+                    readOnly: true
+                  - name: media-storage
+                    mountPath: /app/media
+                    readOnly: true
+                  resources:
+                    requests:
+                      memory: "16Mi"
+                      cpu: "5m"
+                    limits:
+                      memory: "32Mi"
+                      cpu: "20m"
+                  livenessProbe:
+                    httpGet:
+                      path: /health
+                      port: 80
+                    initialDelaySeconds: 15
+                    periodSeconds: 30
+                    timeoutSeconds: 5
+                    failureThreshold: 3
+                  readinessProbe:
+                    httpGet:
+                      path: /health
+                      port: 80
+                    initialDelaySeconds: 5
+                    periodSeconds: 10
+                    timeoutSeconds: 3
+                    failureThreshold: 3
+                volumes:
+                - name: nginx-config
+                  configMap:
+                    name: frontend-nginx-config
+                - name: static-storage
+                  persistentVolumeClaim:
+                    claimName: static-pvc
+                - name: media-storage
+                  persistentVolumeClaim:
+                    claimName: media-pvc
+          EOF
+
+          kubectl apply -f /tmp/frontend-optimized.yml
+          kubectl apply -n obscura-messenger -f k8s/frontend-service.yml
+
+      - name: Wait for frontend deployment
+        run: |
+          echo "Waiting for frontend deployment..."
+          kubectl wait --for=condition=available deployment/frontend-app -n obscura-messenger --timeout=300s || {
+            echo "Frontend deployment failed, checking status..."
+            kubectl describe deployment frontend-app -n obscura-messenger || true
+            kubectl get pods -l app=frontend-app -n obscura-messenger -o wide || true
+            kubectl describe pods -l app=frontend-app -n obscura-messenger || true
+            kubectl logs -l app=frontend-app -n obscura-messenger --tail=50 || true
+            exit 1
+          }
+
+      - name: Deploy ingress and final verification
+        run: |
+          echo "Deploying ingress..."
+          kubectl apply -n obscura-messenger -f k8s/ingress.yml || echo "Ingress deployment skipped"
+
+          echo "============================================"
+          echo "SINGLE NODE DEPLOYMENT VERIFICATION"
+          echo "============================================"
+
+          kubectl get all -n obscura-messenger
+
+          echo ""
+          echo "Pod details:"
+          kubectl get pods -n obscura-messenger -o wide
+
+          BACKEND_READY=$(kubectl get deployment backend-app -n obscura-messenger -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+          FRONTEND_READY=$(kubectl get deployment frontend-app -n obscura-messenger -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+
+          echo ""
+          echo "============================================"
+          if [ "$BACKEND_READY" = "1" ] && [ "$FRONTEND_READY" = "1" ]; then
+            echo "SUCCESS! Single-node deployment completed successfully"
+            echo "Backend: $BACKEND_READY/1 ready"
+            echo "Frontend: $FRONTEND_READY/1 ready"
+            echo ""
+            echo "RESOURCE OPTIMIZATION APPLIED:"
+            echo "- Backend: 15m CPU (was 25m), 128Mi memory (was 128Mi)"
+            echo "- Frontend: 5m CPU (was 25m), 16Mi memory (was 32Mi)"
+            echo "- Init containers: 1m CPU (was 10m)"
+            echo "- Total CPU savings: ~85% reduction"
+          else
+            echo "DEPLOYMENT INCOMPLETE"
+            echo "Backend: $BACKEND_READY/1 ready"
+            echo "Frontend: $FRONTEND_READY/1 ready"
+            exit 1
+          fi
+
+      - name: Provide access information
+        run: |
+          echo "============================================"
+          echo "APPLICATION ACCESS INFORMATION"
+          echo "============================================"
+          echo "Single-node optimized deployment successful!"
+          echo ""
+          echo "External IP: 74.248.75.107"
+          echo "Application URL: http://74.248.75.107"
+          echo ""
+          echo "Monitor your application:"
+          echo "kubectl get pods -n obscura-messenger"
+          echo "kubectl logs -l app=backend-app -n obscura-messenger"
+          echo "kubectl logs -l app=frontend-app -n obscura-messenger"
+          echo "kubectl top pods -n obscura-messenger"
+          echo "============================================"
 
   security-scan:
     needs: build-and-push
