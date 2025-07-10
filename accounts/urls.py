@@ -1,6 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from .api_views import login_api
 
 app_name = 'accounts'
 
@@ -15,4 +16,5 @@ urlpatterns = [
     path('profile/update/password/', views.update_password, name='update_password'),
     path('profile/update/picture/', views.update_profile_picture, name='update_profile_picture'),
     path('<str:username>/', views.user_profile, name='user_profile'),
+    path("api/login/", login_api, name="login_api"),
 ]
